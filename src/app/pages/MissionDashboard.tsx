@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   Search,
@@ -22,139 +22,52 @@ import {
   List,
   BookOpen,
   Target,
+  Loader2,
 } from "lucide-react";
+import { getProjects, getMyProjects } from "../utils/matchService";
+import type { Project } from "../types/database";
 
-const allMissions = [
-  {
-    id: "urban-garden",
-    title: "Urban Rooftop Garden Setup",
-    org: "GreenCity Initiative",
-    location: "Manila, NCR",
-    category: "Urban Farming",
-    difficulty: "Beginner",
-    duration: "4 weeks",
-    points: 150,
-    volunteers: 12,
-    volunteersNeeded: 20,
-    professionals: 2,
-    professionalsNeeded: 3,
-    urgent: false,
-    description: "Learn to transform unused rooftop spaces into productive urban gardens. You'll study companion planting, soil health, and rainwater collection techniques.",
-    image: "https://images.unsplash.com/photo-1763897710760-2d47e1fa69ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
-    tags: ["Composting", "Soil Science", "Urban Farming"],
-    icon: <Sprout className="w-4 h-4" />,
-    color: "bg-emerald-100 text-emerald-700",
-    verified: true,
-  },
-  {
-    id: "solar-install",
-    title: "Community Solar Panel Installation",
-    org: "SolarPH Foundation",
-    location: "Cebu City, Cebu",
-    category: "Energy Saving",
-    difficulty: "Intermediate",
-    duration: "6 weeks",
-    points: 250,
-    volunteers: 8,
-    volunteersNeeded: 15,
-    professionals: 4,
-    professionalsNeeded: 5,
-    urgent: true,
-    description: "Participate in installing solar panels for low-income households. Learn photovoltaic system basics, safety protocols, and electrical wiring fundamentals.",
-    image: "https://images.unsplash.com/photo-1626793369994-a904d2462888?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
-    tags: ["Solar Installation", "Electrical", "Energy Audit"],
-    icon: <Sun className="w-4 h-4" />,
-    color: "bg-amber-100 text-amber-700",
-    verified: true,
-  },
-  {
-    id: "repair-skills",
-    title: "Repair Café & Reuse Workshop",
-    org: "Zero Waste Collective",
-    location: "Davao City, Mindanao",
-    category: "Repair Skills",
-    difficulty: "Beginner",
-    duration: "2 weeks",
-    points: 100,
-    volunteers: 18,
-    volunteersNeeded: 25,
-    professionals: 1,
-    professionalsNeeded: 2,
-    urgent: false,
-    description: "Run a community repair café teaching basic appliance repair, sewing, and bicycle maintenance to extend the life of everyday items and reduce waste.",
-    image: "https://images.unsplash.com/photo-1585406666850-82f7532fdae3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
-    tags: ["Repair", "Waste Reduction", "Teaching", "Construction"],
-    icon: <Wrench className="w-4 h-4" />,
-    color: "bg-blue-100 text-blue-700",
-    verified: false,
-  },
-  {
-    id: "reforestation",
-    title: "Coastal Reforestation Drive",
-    org: "Forest Foundation PH",
-    location: "Surigao del Norte, Caraga",
-    category: "Reforestation",
-    difficulty: "All Levels",
-    duration: "8 weeks",
-    points: 300,
-    volunteers: 45,
-    volunteersNeeded: 60,
-    professionals: 3,
-    professionalsNeeded: 5,
-    urgent: true,
-    description: "Join a large-scale mangrove and coastal forest restoration project. Learn species identification, planting techniques, and long-term ecosystem monitoring.",
-    image: "https://images.unsplash.com/photo-1752169580565-c2515f8973f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
-    tags: ["Forestry", "GIS Mapping", "Soil Science", "Community Organising"],
-    icon: <TreePine className="w-4 h-4" />,
-    color: "bg-green-100 text-green-700",
-    verified: true,
-  },
-  {
-    id: "composting",
-    title: "Neighborhood Composting Hub",
-    org: "EcoBarangay Network",
-    location: "Quezon City, NCR",
-    category: "Composting",
-    difficulty: "Beginner",
-    duration: "3 weeks",
-    points: 120,
-    volunteers: 6,
-    volunteersNeeded: 10,
-    professionals: 0,
-    professionalsNeeded: 1,
-    urgent: false,
-    description: "Set up a community composting station and educate neighbors on organic waste reduction, vermicomposting, and using compost for urban gardens.",
-    image: "https://images.unsplash.com/photo-1763897710760-2d47e1fa69ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
-    tags: ["Composting", "Urban Farming", "Teaching"],
-    icon: <Recycle className="w-4 h-4" />,
-    color: "bg-lime-100 text-lime-700",
-    verified: true,
-  },
-  {
-    id: "water-conservation",
-    title: "Rainwater Harvesting System",
-    org: "WaterSense Alliance",
-    location: "Iloilo City, Visayas",
-    category: "Water Conservation",
-    difficulty: "Intermediate",
-    duration: "5 weeks",
-    points: 200,
-    volunteers: 10,
-    volunteersNeeded: 18,
-    professionals: 2,
-    professionalsNeeded: 3,
-    urgent: false,
-    description: "Design and build rainwater collection systems for community gardens and households. Learn plumbing basics, filtration methods, and water quality testing.",
-    image: "https://images.unsplash.com/photo-1626793369994-a904d2462888?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600",
-    tags: ["Construction", "Community Organising", "Teaching"],
-    icon: <Droplets className="w-4 h-4" />,
-    color: "bg-cyan-100 text-cyan-700",
-    verified: false,
-  },
-];
+// Helper function to get category color based on focus area
+function getCategoryStyle(focusArea: string[] | undefined): { color: string; icon: React.ReactNode } {
+  const area = focusArea?.[0]?.toLowerCase() || '';
+  if (area.includes('energy') || area.includes('solar') || area.includes('renewable')) {
+    return { color: 'bg-amber-100 text-amber-700', icon: <Sun className="w-4 h-4" /> };
+  }
+  if (area.includes('disaster') || area.includes('emergency')) {
+    return { color: 'bg-red-100 text-red-700', icon: <AlertTriangle className="w-4 h-4" /> };
+  }
+  if (area.includes('education') || area.includes('literacy')) {
+    return { color: 'bg-blue-100 text-blue-700', icon: <BookOpen className="w-4 h-4" /> };
+  }
+  if (area.includes('water') || area.includes('conservation')) {
+    return { color: 'bg-cyan-100 text-cyan-700', icon: <Droplets className="w-4 h-4" /> };
+  }
+  if (area.includes('urban') || area.includes('infrastructure')) {
+    return { color: 'bg-emerald-100 text-emerald-700', icon: <Sprout className="w-4 h-4" /> };
+  }
+  if (area.includes('forest') || area.includes('reforestation')) {
+    return { color: 'bg-green-100 text-green-700', icon: <TreePine className="w-4 h-4" /> };
+  }
+  return { color: 'bg-lime-100 text-lime-700', icon: <Recycle className="w-4 h-4" /> };
+}
 
-const categories = ["All", "Urban Farming", "Energy Saving", "Repair Skills", "Reforestation", "Composting", "Water Conservation"];
-const regions = ["All Regions", "NCR", "Luzon", "Visayas", "Mindanao", "Caraga"];
+// Get a placeholder image based on focus area
+function getProjectImage(focusArea: string[] | undefined): string {
+  const area = focusArea?.[0]?.toLowerCase() || '';
+  if (area.includes('solar') || area.includes('energy') || area.includes('renewable')) {
+    return 'https://images.unsplash.com/photo-1626793369994-a904d2462888?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600';
+  }
+  if (area.includes('forest') || area.includes('conservation')) {
+    return 'https://images.unsplash.com/photo-1752169580565-c2515f8973f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600';
+  }
+  if (area.includes('education') || area.includes('technology')) {
+    return 'https://images.unsplash.com/photo-1585406666850-82f7532fdae3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600';
+  }
+  return 'https://images.unsplash.com/photo-1763897710760-2d47e1fa69ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600';
+}
+
+const categories = ["All", "climate science", "renewable energy", "education", "urban planning", "climate finance", "technology", "advocacy"];
+const regions = ["All Regions", "Global", "North America", "Africa", "Caribbean", "West Coast", "Pacific Northwest", "Southwest"];
 const difficulties = ["All Levels", "Beginner", "Intermediate", "Advanced"];
 
 export function MissionDashboard() {
@@ -165,19 +78,70 @@ export function MissionDashboard() {
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Real data from Supabase
+  const [missions, setMissions] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = allMissions.filter((m) => {
+  // Fetch projects on mount
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        setLoading(true);
+        const data = await getProjects();
+        setMissions(data);
+      } catch (err) {
+        setError("Failed to load projects");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProjects();
+  }, []);
+
+  const filtered = missions.filter((m) => {
     const matchSearch = m.title.toLowerCase().includes(search.toLowerCase()) ||
-      m.org.toLowerCase().includes(search.toLowerCase()) ||
-      m.tags.some(t => t.toLowerCase().includes(search.toLowerCase()));
-    const matchCat = selectedCategory === "All" || m.category === selectedCategory;
-    const matchUrgent = !urgentOnly || m.urgent;
-    return matchSearch && matchCat && matchUrgent;
+      (m.description?.toLowerCase().includes(search.toLowerCase()) || false) ||
+      (m.skills_needed?.some(s => s.toLowerCase().includes(search.toLowerCase())) || false);
+    const matchCat = selectedCategory === "All" || (m.focus_area?.some(f => f.toLowerCase().includes(selectedCategory.toLowerCase())) || false);
+    const matchRegion = selectedRegion === "All Regions" || m.region === selectedRegion;
+    const matchUrgent = !urgentOnly || m.type === "urgent";
+    return matchSearch && matchCat && matchRegion && matchUrgent;
   });
 
-  const urgent = filtered.filter(m => m.urgent);
-  const regular = filtered.filter(m => !m.urgent);
+  const urgent = filtered.filter(m => m.type === "urgent");
+  const regular = filtered.filter(m => m.type !== "urgent");
   const sorted = [...urgent, ...regular];
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F9FDFB] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2F8F6B]" />
+        <span className="ml-3 text-gray-600 font-medium">Loading missions...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#F9FDFB] flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-medium">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-[#2F8F6B] text-white rounded-lg hover:bg-[#0F3D2E] transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9FDFB]">
@@ -315,111 +279,116 @@ export function MissionDashboard() {
 
             {viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {sorted.map((mission) => (
-                  <Link
-                    to={`/missions/${mission.id}`}
-                    key={mission.id}
-                    className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group"
-                  >
-                    <div className="relative">
-                      <img src={mission.image} alt={mission.title} className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300" />
-                      {mission.urgent && (
-                        <div className="absolute top-3 left-3 flex items-center gap-1 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                          <AlertTriangle className="w-3 h-3" />
-                          URGENT
-                        </div>
-                      )}
-                      <div className="absolute top-3 right-3">
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${mission.color}`}>
-                          {mission.category}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-base leading-tight">{mission.title}</h3>
-                        {mission.verified && (
-                          <CheckCircle className="w-4 h-4 text-[#2F8F6B] flex-shrink-0 mt-0.5" />
+                {sorted.map((mission) => {
+                  const style = getCategoryStyle(mission.focus_area);
+                  const volunteerProgress = mission.volunteers_needed > 0 ? Math.min(100, Math.random() * 80) : 0; // Placeholder progress
+                  return (
+                    <Link
+                      to={`/missions/${mission.id}`}
+                      key={mission.id}
+                      className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group"
+                    >
+                      <div className="relative">
+                        <img src={getProjectImage(mission.focus_area)} alt={mission.title} className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300" />
+                        {mission.type === "urgent" && (
+                          <div className="absolute top-3 left-3 flex items-center gap-1 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                            <AlertTriangle className="w-3 h-3" />
+                            URGENT
+                          </div>
                         )}
-                      </div>
-                      <p className="text-xs text-gray-500 mb-3">{mission.org}</p>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 mb-4">
-                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{mission.location}</span>
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{mission.duration}</span>
-                      </div>
-                      <div className="space-y-2 mb-4">
-                        <div>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="text-gray-500">Volunteers</span>
-                            <span className="font-medium text-[#0F3D2E]">{mission.volunteers}/{mission.volunteersNeeded}</span>
-                          </div>
-                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-[#2F8F6B] rounded-full"
-                              style={{ width: `${(mission.volunteers / mission.volunteersNeeded) * 100}%` }}
-                            />
-                          </div>
+                        <div className="absolute top-3 right-3">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${style.color}`}>
+                            {mission.focus_area?.[0] || "Project"}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-1.5 mb-4">
-                        {mission.tags.slice(0, 3).map(tag => (
-                          <span key={tag} className="text-xs bg-[#E6F4EE] text-[#0F3D2E] px-2 py-0.5 rounded-full">{tag}</span>
-                        ))}
-                      </div>
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                        <div className="flex items-center gap-1 text-xs font-semibold text-[#2F8F6B]">
-                          <Star className="w-3.5 h-3.5 fill-[#2F8F6B]" />
-                          +{mission.points} points
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-base leading-tight">{mission.title}</h3>
+                          <CheckCircle className="w-4 h-4 text-[#2F8F6B] flex-shrink-0 mt-0.5" />
                         </div>
-                        <span className="text-xs font-semibold text-[#2F8F6B] flex items-center gap-1">
-                          View & Apply <ChevronRight className="w-3.5 h-3.5" />
-                        </span>
+                        <p className="text-xs text-gray-500 mb-3">{mission.region || "Global"}</p>
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mb-4">
+                          <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{mission.location || "Remote"}</span>
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{mission.duration || "Flexible"}</span>
+                        </div>
+                        <div className="space-y-2 mb-4">
+                          <div>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-gray-500">Volunteers needed</span>
+                              <span className="font-medium text-[#0F3D2E]">{mission.volunteers_needed}</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[#2F8F6B] rounded-full"
+                                style={{ width: `${volunteerProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          {mission.skills_needed?.slice(0, 3).map(skill => (
+                            <span key={skill} className="text-xs bg-[#E6F4EE] text-[#0F3D2E] px-2 py-0.5 rounded-full">{skill}</span>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                          <div className="flex items-center gap-1 text-xs font-semibold text-[#2F8F6B]">
+                            <Star className="w-3.5 h-3.5 fill-[#2F8F6B]" />
+                            +{mission.points} points
+                          </div>
+                          <span className="text-xs font-semibold text-[#2F8F6B] flex items-center gap-1">
+                            View & Apply <ChevronRight className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <div className="space-y-3">
-                {sorted.map((mission) => (
-                  <Link
-                    to={`/missions/${mission.id}`}
-                    key={mission.id}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex overflow-hidden group"
-                  >
-                    <img src={mission.image} alt={mission.title} className="w-36 h-full object-cover group-hover:scale-105 transition-transform duration-300 flex-shrink-0" />
-                    <div className="p-4 flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-base">{mission.title}</h3>
-                            {mission.urgent && (
-                              <span className="flex items-center gap-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                <AlertTriangle className="w-3 h-3" />
-                                URGENT
-                              </span>
-                            )}
+                {sorted.map((mission) => {
+                  const style = getCategoryStyle(mission.focus_area);
+                  return (
+                    <Link
+                      to={`/missions/${mission.id}`}
+                      key={mission.id}
+                      className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex overflow-hidden group"
+                    >
+                      <img src={getProjectImage(mission.focus_area)} alt={mission.title} className="w-36 h-full object-cover group-hover:scale-105 transition-transform duration-300 flex-shrink-0" />
+                      <div className="p-4 flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-base">{mission.title}</h3>
+                              {mission.type === "urgent" && (
+                                <span className="flex items-center gap-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  URGENT
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{mission.region || "Global"} · {mission.location || "Remote"}</p>
                           </div>
-                          <p className="text-xs text-gray-500 mt-0.5">{mission.org} · {mission.location}</p>
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${style.color}`}>
+                            {mission.focus_area?.[0] || "Project"}
+                          </span>
                         </div>
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${mission.color}`}>
-                          {mission.category}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2 line-clamp-2">{mission.description}</p>
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="flex gap-3 text-xs text-gray-500">
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{mission.duration}</span>
-                          <span className="flex items-center gap-1"><Users className="w-3 h-3" />{mission.volunteers}/{mission.volunteersNeeded}</span>
-                          <span className="flex items-center gap-1 font-semibold text-[#2F8F6B]"><Star className="w-3 h-3 fill-[#2F8F6B]" />+{mission.points} pts</span>
+                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{mission.description}</p>
+                        <div className="flex items-center justify-between mt-3">
+                          <div className="flex gap-3 text-xs text-gray-500">
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{mission.duration || "Flexible"}</span>
+                            <span className="flex items-center gap-1"><Users className="w-3 h-3" />{mission.volunteers_needed} needed</span>
+                            <span className="flex items-center gap-1 font-semibold text-[#2F8F6B]"><Star className="w-3 h-3 fill-[#2F8F6B]" />+{mission.points} pts</span>
+                          </div>
+                          <span className="text-xs font-semibold text-[#2F8F6B] flex items-center gap-1">
+                            View & Apply <ChevronRight className="w-3.5 h-3.5" />
+                          </span>
                         </div>
-                        <span className="text-xs font-semibold text-[#2F8F6B] flex items-center gap-1">
-                          View & Apply <ChevronRight className="w-3.5 h-3.5" />
-                        </span>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </>

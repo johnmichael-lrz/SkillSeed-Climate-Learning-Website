@@ -44,19 +44,15 @@ export function Navbar() {
               Match
             </Link>
 
-            {/* Show these only when logged in */}
-            {user && (
-              <>
-                <div className="relative group">
-                  <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 flex items-center gap-1 cursor-default">
-                    Academy
-                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold ml-1">
-                      Soon
-                    </span>
-                  </button>
-                </div>
-              </>
-            )}
+            {/* Academy - shown to all users */}
+            <div className="relative group">
+              <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 flex items-center gap-1 cursor-default">
+                Academy
+                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold ml-1">
+                  Soon
+                </span>
+              </button>
+            </div>
 
             <Link
               to="/funding"
@@ -192,17 +188,13 @@ export function Navbar() {
               Match
             </Link>
 
-            {/* Show these only when logged in */}
-            {user && (
-              <>
-                <div className="px-4 py-2.5 text-sm font-medium text-gray-400 flex items-center gap-2">
-                  Academy
-                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">
-                    Soon
-                  </span>
-                </div>
-              </>
-            )}
+            {/* Academy - shown to all users */}
+            <div className="px-4 py-2.5 text-sm font-medium text-gray-400 flex items-center gap-2">
+              Academy
+              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">
+                Soon
+              </span>
+            </div>
 
             <Link
               to="/funding"

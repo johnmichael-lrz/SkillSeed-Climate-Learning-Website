@@ -1,287 +1,289 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router";
-import { Leaf, Menu, X, Plus, LogOut, User, Settings, Target } from "lucide-react";
-import { useAuth } from "../hooks/useAuth";
+import { useState, useRef, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { Menu, X, Leaf, Sprout, ChevronDown, User, Settings, LogOut, TrendingUp } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+
+const navLinks = [
+  { label: "Match",     href: "/browse",    comingSoon: false },
+  { label: "Community", href: "/community", comingSoon: false },
+  { label: "Academy",   href: "/academy",   comingSoon: false },
+  { label: "Funding",   href: "/funding",   comingSoon: false },
+];
 
 export function Navbar() {
+  const { user, login, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const isActive = (path: string) =>
-    location.pathname === path || location.pathname.startsWith(path + "/");
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
-  const handleSignOut = async () => {
-    await signOut();
-    setAvatarMenuOpen(false);
+  const handleLogout = () => {
+    logout();
+    setDropdownOpen(false);
+    navigate("/");
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-[#E6F4EE] shadow-sm">
+    <nav
+      className="sticky top-0 z-50 bg-white border-b border-gray-100"
+      style={{ boxShadow: "0 1px 12px rgba(15,61,46,0.07)" }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-[#0F3D2E] rounded-lg flex items-center justify-center group-hover:bg-[#2F8F6B] transition-colors">
-              <Leaf className="w-5 h-5 text-white" />
+
+          {/* ── Logo ── */}
+          <Link to="/" className="flex items-center gap-2 shrink-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)" }}>
+              <Leaf className="w-4 h-4 text-white" />
             </div>
-            <span className="text-[#0F3D2E] font-[Manrope] font-bold text-xl tracking-tight">
-              Skill<span className="text-[#2F8F6B]">Seed</span>
+            <span className="text-xl" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, color: "#0F3D2E" }}>
+              SkillSeed
             </span>
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
-            <Link
-              to="/dashboard"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isActive("/dashboard")
-                  ? "bg-[#E6F4EE] text-[#0F3D2E]"
-                  : "text-gray-600 hover:text-[#0F3D2E] hover:bg-[#E6F4EE]"
-              }`}
-            >
-              Match
-            </Link>
-
-            {/* Academy - shown to all users */}
-            <div className="relative group">
-              <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 flex items-center gap-1 cursor-default">
-                Academy
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold ml-1">
-                  Soon
-                </span>
-              </button>
-            </div>
-
-            <Link
-              to="/funding"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isActive("/funding")
-                  ? "bg-[#E6F4EE] text-[#0F3D2E]"
-                  : "text-gray-600 hover:text-[#0F3D2E] hover:bg-[#E6F4EE]"
-              }`}
-            >
-              Funding
-            </Link>
-            <Link
-              to="/community"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isActive("/community")
-                  ? "bg-[#E6F4EE] text-[#0F3D2E]"
-                  : "text-gray-600 hover:text-[#0F3D2E] hover:bg-[#E6F4EE]"
-              }`}
-            >
-              Community
-            </Link>
+          {/* ── Center Nav (desktop) ── */}
+          <div className="hidden md:flex items-center gap-0.5">
+            {navLinks.map((link) => (
+              <div key={link.label} className="relative">
+                {link.comingSoon ? (
+                  <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-gray-400 cursor-default select-none text-sm">
+                    {link.label}
+                    <span className="text-xs px-1.5 py-0.5 rounded-full"
+                      style={{ background: "#E6F4EE", color: "#2F8F6B", fontSize: "10px", fontWeight: 600 }}>
+                      Soon
+                    </span>
+                  </span>
+                ) : (
+                  <Link
+                    to={link.href}
+                    className="px-3 py-2 rounded-lg text-sm transition-colors duration-150"
+                    style={{
+                      color: location.pathname === link.href ? "#0F3D2E" : "#4B5563",
+                      background: location.pathname === link.href ? "#E6F4EE" : "transparent",
+                      fontWeight: location.pathname === link.href ? 600 : 400,
+                    }}
+                  >
+                    {link.label}
+                  </Link>
+                )}
+              </div>
+            ))}
           </div>
 
-          {/* Right side actions */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* ── Right Side (desktop) ── */}
+          <div className="hidden md:flex items-center gap-2">
             {user ? (
+              /* ── LOGGED IN ── */
               <>
-                {/* Logged in: Post a Project + Avatar */}
                 <Link
                   to="/post-project"
-                  className="text-sm font-medium bg-[#2F8F6B] text-white px-4 py-2 rounded-lg hover:bg-[#0F3D2E] transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-lg text-sm transition-all"
+                  style={{ color: "#0F3D2E", fontWeight: 600, border: "1.5px solid #0F3D2E" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#F0FAF5")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                 >
-                  <Plus className="w-4 h-4" />
                   Post a Project
                 </Link>
-                
-                {/* Avatar with dropdown */}
-                <div className="relative">
+
+                {/* Avatar + Dropdown */}
+                <div className="relative" ref={dropdownRef}>
                   <button
-                    onClick={() => setAvatarMenuOpen(!avatarMenuOpen)}
-                    className="w-9 h-9 bg-[#0F3D2E] rounded-full flex items-center justify-center text-white font-semibold text-sm hover:bg-[#2F8F6B] transition-colors"
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl transition-all"
+                    style={{ border: "1.5px solid #E5E7EB" }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = "#2F8F6B")}
+                    onMouseLeave={e => (!dropdownOpen && (e.currentTarget.style.borderColor = "#E5E7EB"))}
                   >
-                    {user.user_metadata?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm"
+                      style={{ background: "linear-gradient(135deg, #0F3D2E, #2F8F6B)", fontWeight: 700 }}>
+                      {user.avatar}
+                    </div>
+                    <span className="text-sm" style={{ fontWeight: 500, color: "#374151" }}>
+                      {user.name.split(" ")[0]}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5" style={{ color: "#9CA3AF", transform: dropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
                   </button>
-                  
-                  {avatarMenuOpen && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-10" 
-                        onClick={() => setAvatarMenuOpen(false)}
-                      />
-                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-20 py-1">
-                        <div className="px-4 py-3 border-b border-gray-100">
-                          <p className="text-sm font-medium text-[#0F3D2E] truncate">
-                            {user.user_metadata?.full_name || 'User'}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                        </div>
-                        <Link
-                          to="/profile"
-                          onClick={() => setAvatarMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#E6F4EE] hover:text-[#0F3D2E]"
-                        >
-                          <User className="w-4 h-4" />
-                          Profile
-                        </Link>
-                        <Link
-                          to="/progress"
-                          onClick={() => setAvatarMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#E6F4EE] hover:text-[#0F3D2E]"
-                        >
-                          <Target className="w-4 h-4" />
-                          Tracker
-                        </Link>
-                        <Link
-                          to="/settings"
-                          onClick={() => setAvatarMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#E6F4EE] hover:text-[#0F3D2E]"
-                        >
-                          <Settings className="w-4 h-4" />
-                          Settings
-                        </Link>
-                        <div className="border-t border-gray-100 mt-1 pt-1">
-                          <button
-                            onClick={handleSignOut}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
-                          >
-                            <LogOut className="w-4 h-4" />
-                            Log out
-                          </button>
+
+                  {/* Dropdown menu */}
+                  {dropdownOpen && (
+                    <div
+                      className="absolute right-0 mt-2 w-56 rounded-2xl overflow-hidden"
+                      style={{ background: "white", border: "1px solid #E5E7EB", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 100 }}
+                    >
+                      {/* User info */}
+                      <div className="px-4 py-3.5" style={{ borderBottom: "1px solid #F3F4F6" }}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white"
+                            style={{ background: "linear-gradient(135deg, #0F3D2E, #2F8F6B)", fontWeight: 700 }}>
+                            {user.avatar}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm truncate" style={{ fontWeight: 700, color: "#0F3D2E" }}>{user.name}</p>
+                            <p className="text-xs truncate" style={{ color: "#9CA3AF" }}>{user.email}</p>
+                          </div>
                         </div>
                       </div>
-                    </>
+
+                      {/* Menu items */}
+                      <div className="py-1.5">
+                        {[
+                          { icon: User, label: "Profile", href: "/dashboard" },
+                          { icon: TrendingUp, label: "Tracker", href: "/tracker" },
+                          { icon: Settings, label: "Settings", href: "/dashboard" },
+                        ].map(({ icon: Icon, label, href }) => (
+                          <Link
+                            key={label}
+                            to={href}
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+                            style={{ color: "#374151" }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "#F9FAFB")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                          >
+                            <Icon className="w-4 h-4" style={{ color: "#9CA3AF" }} />
+                            {label}
+                          </Link>
+                        ))}
+                      </div>
+
+                      <div style={{ borderTop: "1px solid #F3F4F6" }} className="py-1.5">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left"
+                          style={{ color: "#EF4444" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "#FFF5F5")}
+                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Log Out
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </>
             ) : (
+              /* ── LOGGED OUT ── */
               <>
-                {/* Logged out: Log In + Sign Up */}
-                <Link
-                  to="/auth"
-                  className="text-sm font-medium text-gray-600 hover:text-[#0F3D2E] transition-colors px-3 py-2"
+                <button
+                  onClick={() => login()}
+                  className="px-4 py-2 rounded-lg text-sm transition-colors duration-150"
+                  style={{ color: "#374151", fontWeight: 500 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#F9FAFB")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                 >
                   Log In
-                </Link>
+                </button>
                 <Link
-                  to="/auth"
-                  className="text-sm font-medium bg-[#0F3D2E] text-white px-4 py-2 rounded-lg hover:bg-[#2F8F6B] transition-colors"
+                  to="/signup"
+                  className="px-4 py-2 rounded-lg text-white text-sm transition-all flex items-center gap-1.5"
+                  style={{ background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)", fontWeight: 600, boxShadow: "0 2px 8px rgba(47,143,107,0.35)" }}
                 >
+                  <Sprout className="w-3.5 h-3.5" />
                   Sign Up
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* ── Mobile Toggle ── */}
           <button
-            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-[#E6F4EE]"
             onClick={() => setMobileOpen(!mobileOpen)}
+            className="md:hidden p-2 rounded-lg"
+            style={{ color: "#0F3D2E" }}
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
+      </div>
 
-        {/* Mobile Menu */}
-        {mobileOpen && (
-          <div className="md:hidden border-t border-[#E6F4EE] py-3 space-y-1">
-            <Link
-              to="/dashboard"
-              onClick={() => setMobileOpen(false)}
-              className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-[#E6F4EE] hover:text-[#0F3D2E] rounded-lg"
-            >
-              Match
-            </Link>
-
-            {/* Academy - shown to all users */}
-            <div className="px-4 py-2.5 text-sm font-medium text-gray-400 flex items-center gap-2">
-              Academy
-              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">
-                Soon
-              </span>
-            </div>
-
-            <Link
-              to="/funding"
-              onClick={() => setMobileOpen(false)}
-              className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-[#E6F4EE] hover:text-[#0F3D2E] rounded-lg"
-            >
-              Funding
-            </Link>
-            <Link
-              to="/community"
-              onClick={() => setMobileOpen(false)}
-              className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-[#E6F4EE] hover:text-[#0F3D2E] rounded-lg"
-            >
-              Community
-            </Link>
-
-            <div className="pt-2 border-t border-[#E6F4EE] px-4">
-              {user ? (
-                <>
-                  {/* Logged in mobile actions */}
-                  <Link
-                    to="/post-project"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center justify-center gap-1.5 w-full text-sm font-medium bg-[#2F8F6B] text-white px-3 py-2.5 rounded-lg mb-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Post a Project
-                  </Link>
-                  <div className="flex items-center gap-3 py-2">
-                    <div className="w-9 h-9 bg-[#0F3D2E] rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {user.user_metadata?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#0F3D2E] truncate">
-                        {user.user_metadata?.full_name || 'User'}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <Link
-                      to="/profile"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex-1 text-center text-sm font-medium text-gray-600 border border-gray-200 px-3 py-2 rounded-lg"
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      to="/progress"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex-1 text-center text-sm font-medium text-gray-600 border border-gray-200 px-3 py-2 rounded-lg"
-                    >
-                      Tracker
-                    </Link>
-                  </div>
-                  <button
-                    onClick={() => { handleSignOut(); setMobileOpen(false); }}
-                    className="w-full mt-2 text-center text-sm font-medium text-red-600 border border-red-200 px-3 py-2 rounded-lg"
-                  >
-                    Log out
-                  </button>
-                </>
+      {/* ── Mobile Menu ── */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-1">
+          {navLinks.map((link) => (
+            <div key={link.label}>
+              {link.comingSoon ? (
+                <span className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-400 text-sm">
+                  {link.label}
+                  <span className="text-xs px-1.5 py-0.5 rounded-full"
+                    style={{ background: "#E6F4EE", color: "#2F8F6B", fontSize: "10px", fontWeight: 600 }}>
+                    Soon
+                  </span>
+                </span>
               ) : (
-                <>
-                  {/* Logged out mobile actions */}
-                  <div className="flex gap-2">
-                    <Link
-                      to="/auth"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex-1 text-center text-sm font-medium text-gray-600 border border-gray-200 px-3 py-2 rounded-lg"
-                    >
-                      Log In
-                    </Link>
-                    <Link
-                      to="/auth"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex-1 text-center text-sm font-medium bg-[#0F3D2E] text-white px-3 py-2 rounded-lg"
-                    >
-                      Sign Up
-                    </Link>
-                  </div>
-                </>
+                <Link
+                  to={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-3 py-2.5 rounded-lg text-sm"
+                  style={{ color: location.pathname === link.href ? "#0F3D2E" : "#374151", background: location.pathname === link.href ? "#E6F4EE" : "transparent", fontWeight: location.pathname === link.href ? 600 : 400 }}
+                >
+                  {link.label}
+                </Link>
               )}
             </div>
+          ))}
+
+          <div className="pt-3 flex flex-col gap-2 border-t border-gray-100 mt-2">
+            {user ? (
+              <>
+                {/* User info strip */}
+                <div className="flex items-center gap-3 px-3 py-2 rounded-xl" style={{ background: "#F9FAFB" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm"
+                    style={{ background: "linear-gradient(135deg, #0F3D2E, #2F8F6B)", fontWeight: 700 }}>
+                    {user.avatar}
+                  </div>
+                  <div>
+                    <p className="text-sm" style={{ fontWeight: 600, color: "#0F3D2E" }}>{user.name}</p>
+                    <p className="text-xs" style={{ color: "#9CA3AF" }}>{user.email}</p>
+                  </div>
+                </div>
+                <Link to="/tracker" onClick={() => setMobileOpen(false)}
+                  className="text-center px-4 py-2.5 rounded-lg text-sm"
+                  style={{ color: "#0F3D2E", fontWeight: 600, border: "1.5px solid #0F3D2E" }}>
+                  My Tracker
+                </Link>
+                <Link to="/post-project" onClick={() => setMobileOpen(false)}
+                  className="text-center px-4 py-2.5 rounded-lg text-white text-sm"
+                  style={{ background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)", fontWeight: 600 }}>
+                  Post a Project
+                </Link>
+                <button onClick={() => { logout(); setMobileOpen(false); navigate("/"); }}
+                  className="text-center px-4 py-2.5 rounded-lg text-sm"
+                  style={{ color: "#EF4444", fontWeight: 500, border: "1px solid #FECACA" }}>
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { login(); setMobileOpen(false); }}
+                  className="text-center px-4 py-2.5 rounded-lg text-sm"
+                  style={{ color: "#0F3D2E", fontWeight: 500, border: "1px solid #E5E7EB" }}>
+                  Log In
+                </button>
+                <Link to="/signup" onClick={() => setMobileOpen(false)}
+                  className="text-center px-4 py-2.5 rounded-lg text-white text-sm flex items-center justify-center gap-1.5"
+                  style={{ background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)", fontWeight: 600 }}>
+                  <Sprout className="w-3.5 h-3.5" />
+                  Sign Up Free
+                </Link>
+              </>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </nav>
   );
 }

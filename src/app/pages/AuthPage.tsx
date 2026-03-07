@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { Leaf, Eye, EyeOff, CheckCircle, Globe, Sprout, ChevronRight, ArrowLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router";
+import { Leaf, Eye, EyeOff, CheckCircle, Globe, Sprout, ChevronRight, ArrowLeft, Loader2 } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
 
 export function AuthPage() {
+  const navigate = useNavigate();
+  const { signUp, signIn, signInWithGoogle } = useAuth();
+  
   const [tab, setTab] = useState<"signup" | "login">("signup");
   const [userType, setUserType] = useState<"poster" | "responder" | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -15,13 +21,84 @@ export function AuthPage() {
     region: "",
   });
 
+  const [loginData, setLoginData] = useState({
+    email: "",
+    password: "",
+    remember: false,
+  });
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setError(null);
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setLoginData(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+    setError(null);
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step === 1 && userType) setStep(2);
+    if (step === 1 && userType) {
+      setStep(2);
+      return;
+    }
+  };
+
+  const handleFinalSignup = async () => {
+    if (!userType) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    const { error } = await signUp({
+      email: formData.email,
+      password: formData.password,
+      fullName: formData.fullName,
+      region: formData.region,
+      userType,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const { error } = await signIn({
+      email: loginData.email,
+      password: loginData.password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setLoading(true);
+    setError(null);
+    
+    const { error } = await signInWithGoogle();
+    
+    if (error) {
+      setLoading(false);
+      setError(error.message);
+    }
+    // Note: On success, the user will be redirected by Supabase
   };
 
   return (
@@ -93,7 +170,7 @@ export function AuthPage() {
             {(["signup", "login"] as const).map(t => (
               <button
                 key={t}
-                onClick={() => { setTab(t); setStep(1); }}
+                onClick={() => { setTab(t); setStep(1); setError(null); }}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                   tab === t ? "bg-white text-[#0F3D2E] shadow-sm" : "text-gray-500 hover:text-gray-700"
                 }`}
@@ -102,6 +179,13 @@ export function AuthPage() {
               </button>
             ))}
           </div>
+
+          {/* Error display */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+              {error}
+            </div>
+          )}
 
           {tab === "signup" && (
             <>
@@ -224,7 +308,12 @@ export function AuthPage() {
                     </div>
                   </div>
 
-                  <button className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                  <button
+                    type="button"
+                    onClick={handleGoogleAuth}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
                     <svg viewBox="0 0 24 24" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                       <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -243,13 +332,18 @@ export function AuthPage() {
               )}
 
               {step === 2 && (
-                <OnboardingStep userType={userType!} onBack={() => setStep(1)} />
+                <OnboardingStep 
+                  userType={userType!} 
+                  onBack={() => setStep(1)} 
+                  onComplete={handleFinalSignup}
+                  loading={loading}
+                />
               )}
             </>
           )}
 
           {tab === "login" && (
-            <form className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div className="mb-2">
                 <h1 className="text-[#0F3D2E] font-[Manrope] font-bold text-2xl mb-1">Welcome back</h1>
                 <p className="text-gray-500 text-sm">Log in to your SkillSeed account.</p>
@@ -257,17 +351,25 @@ export function AuthPage() {
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1.5">Email Address</label>
                 <input
+                  name="email"
                   type="email"
+                  value={loginData.email}
+                  onChange={handleLoginChange}
                   placeholder="you@example.com"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 focus:border-[#2F8F6B]"
+                  required
                 />
               </div>
               <div className="relative">
                 <label className="text-sm font-medium text-gray-700 block mb-1.5">Password</label>
                 <input
+                  name="password"
                   type={showPassword ? "text" : "password"}
+                  value={loginData.password}
+                  onChange={handleLoginChange}
                   placeholder="Your password"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 focus:border-[#2F8F6B] pr-10"
+                  required
                 />
                 <button
                   type="button"
@@ -279,24 +381,36 @@ export function AuthPage() {
               </div>
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 text-sm text-gray-600">
-                  <input type="checkbox" className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    name="remember"
+                    checked={loginData.remember}
+                    onChange={handleLoginChange}
+                    className="rounded" 
+                  />
                   Remember me
                 </label>
                 <Link to="/" className="text-sm text-[#2F8F6B] hover:underline">Forgot password?</Link>
               </div>
-              <Link
-                to="/dashboard"
-                className="w-full block text-center bg-[#0F3D2E] text-white py-3.5 rounded-xl font-semibold hover:bg-[#2F8F6B] transition-colors"
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 bg-[#0F3D2E] text-white py-3.5 rounded-xl font-semibold hover:bg-[#2F8F6B] transition-colors disabled:opacity-50"
               >
-                Log In
-              </Link>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Log In"}
+              </button>
 
               <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
                 <div className="relative flex justify-center"><span className="bg-[#F9FDFB] px-3 text-xs text-gray-500">or</span></div>
               </div>
 
-              <button type="button" className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+              <button 
+                type="button" 
+                onClick={handleGoogleAuth}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
                 <svg viewBox="0 0 24 24" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -313,7 +427,12 @@ export function AuthPage() {
   );
 }
 
-function OnboardingStep({ userType, onBack }: { userType: "poster" | "responder"; onBack: () => void }) {
+function OnboardingStep({ userType, onBack, onComplete, loading }: { 
+  userType: "poster" | "responder"; 
+  onBack: () => void;
+  onComplete: () => void;
+  loading: boolean;
+}) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const toggleTag = (tag: string) => {
@@ -418,13 +537,21 @@ function OnboardingStep({ userType, onBack }: { userType: "poster" | "responder"
           </>
         )}
 
-        <Link
-          to="/dashboard"
-          className="w-full flex items-center justify-center gap-2 bg-[#0F3D2E] text-white py-3.5 rounded-xl font-semibold hover:bg-[#2F8F6B] transition-colors mt-2"
+        <button
+          type="button"
+          onClick={onComplete}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 bg-[#0F3D2E] text-white py-3.5 rounded-xl font-semibold hover:bg-[#2F8F6B] transition-colors mt-2 disabled:opacity-50"
         >
-          {userType === "poster" ? "Save and Continue" : "Build My Profile"}
-          <ChevronRight className="w-4 h-4" />
-        </Link>
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <>
+              {userType === "poster" ? "Save and Continue" : "Build My Profile"}
+              <ChevronRight className="w-4 h-4" />
+            </>
+          )}
+        </button>
         <button type="button" className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-2">
           Skip for Now
         </button>

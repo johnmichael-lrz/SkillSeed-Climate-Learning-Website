@@ -1,356 +1,562 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import {
   Search,
-  DollarSign,
-  Calendar,
   ExternalLink,
   Bookmark,
-  ChevronDown,
-  ChevronUp,
-  Star,
+  BookmarkCheck,
+  Calendar,
   Globe,
-  CheckCircle,
+  DollarSign,
+  ChevronDown,
+  ChevronRight,
+  Star,
   Filter,
-  BookOpen,
-  FileText,
-  Lightbulb,
+  Leaf,
+  TrendingUp,
+  Plus,
   Users,
 } from "lucide-react";
 
-const grants = [
+const FEATURED_GRANTS = [
   {
     id: 1,
-    title: "Ecosystem Restoration Fund",
     funder: "UNDP",
-    logo: "UN",
-    logoColor: "bg-blue-600",
+    title: "Ecosystem Restoration & Biodiversity Grant",
+    eligibility: "NGOs, Government bodies, Community groups with 3+ years track record",
+    deadline: "Apr 30, 2026",
+    amount: "Up to $50,000",
     type: "Grant",
-    amount: "Up to $500,000",
-    deadline: "April 30, 2026",
     region: "Southeast Asia",
-    focus: ["Reforestation", "Marine", "Agriculture"],
-    eligibility: "NGOs and community groups with 2+ years of operation",
-    description: "Supports large-scale ecosystem restoration initiatives in Southeast Asia. Priority given to projects with strong community involvement and measurable biodiversity outcomes.",
+    focus: "Reforestation",
     featured: true,
-    saved: false,
+    description: "Supports large-scale ecosystem restoration projects focusing on coastal, forest, and grassland habitats across Southeast Asia.",
   },
   {
     id: 2,
-    title: "Disaster Resilience Programme",
     funder: "USAID",
-    logo: "US",
-    logoColor: "bg-red-600",
-    type: "Grant",
-    amount: "Up to $200,000",
+    title: "Disaster Resilience & Community Preparedness",
+    eligibility: "Local NGOs and community organizations in disaster-prone regions",
     deadline: "May 15, 2026",
+    amount: "$10,000–$75,000",
+    type: "Grant",
     region: "Philippines",
-    focus: ["Disaster Response", "Urban", "Agriculture"],
-    eligibility: "Registered organizations in Mindanao and Visayas",
-    description: "Funding for projects that build community resilience to climate-related disasters. Focus on early warning systems, evacuation planning, and sustainable livelihoods.",
+    focus: "Disaster Response",
     featured: true,
-    saved: false,
+    description: "Funds community-led initiatives that strengthen disaster preparedness and build local resilience capabilities.",
   },
   {
     id: 3,
-    title: "Forest Conservation Program",
-    funder: "Forest Foundation PH",
-    logo: "FF",
-    logoColor: "bg-green-700",
+    funder: "Forest Foundation Philippines",
+    title: "Community Forest Stewardship Programme",
+    eligibility: "Indigenous community groups, forest-adjacent communities",
+    deadline: "Mar 31, 2026",
+    amount: "₱200,000–₱500,000",
     type: "Grant",
-    amount: "Up to ₱2,000,000",
-    deadline: "June 1, 2026",
     region: "Philippines",
-    focus: ["Reforestation", "Education"],
-    eligibility: "Philippine-registered NGOs and LGUs",
-    description: "Annual grant supporting forest conservation and reforestation initiatives across the Philippines. Includes capacity building support and monitoring tools.",
+    focus: "Reforestation",
     featured: true,
-    saved: false,
+    description: "Supports indigenous and local community groups in sustainable forest management and conservation.",
+    urgent: true,
   },
+];
+
+const ALL_GRANTS = [
+  ...FEATURED_GRANTS,
   {
     id: 4,
-    title: "Climate Innovation Fellowship",
     funder: "Asian Development Bank",
-    logo: "ADB",
-    logoColor: "bg-yellow-600",
+    title: "Urban Climate Resilience Fellowship",
+    eligibility: "Young professionals under 35 with urban planning or environmental science background",
+    deadline: "Jun 1, 2026",
+    amount: "$5,000 + mentorship",
     type: "Fellowship",
-    amount: "$25,000/year",
-    deadline: "July 10, 2026",
     region: "Asia-Pacific",
-    focus: ["Energy", "Urban", "Agriculture"],
-    eligibility: "Individuals 25-40 with climate sector experience",
-    description: "12-month fellowship for emerging climate leaders. Includes mentorship, travel grants, and access to ADB networks across the Asia-Pacific.",
+    focus: "Urban",
     featured: false,
-    saved: false,
+    description: "Fellowship for emerging leaders in urban climate resilience and sustainable city planning.",
   },
   {
     id: 5,
-    title: "Renewable Energy Transition Fund",
-    funder: "Global Environment Facility",
-    logo: "GEF",
-    logoColor: "bg-teal-600",
+    funder: "GIZ Philippines",
+    title: "Renewable Energy Access Fund",
+    eligibility: "Social enterprises and NGOs working on energy access in off-grid communities",
+    deadline: "Jul 20, 2026",
+    amount: "€15,000–€40,000",
     type: "Grant",
-    amount: "Up to $1,000,000",
-    deadline: "August 1, 2026",
-    region: "Global",
-    focus: ["Energy", "Urban"],
-    eligibility: "Government agencies, NGOs, and academic institutions",
-    description: "Supports community-scale renewable energy projects, particularly solar and micro-hydro installations in off-grid and island communities.",
+    region: "Philippines",
+    focus: "Clean Energy",
     featured: false,
-    saved: false,
+    description: "Funds renewable energy projects that expand energy access to off-grid and underserved communities.",
   },
   {
     id: 6,
-    title: "Ocean Conservation Partnership",
-    funder: "WWF Philippines",
-    logo: "WWF",
-    logoColor: "bg-gray-700",
+    funder: "Patagonia Environmental",
+    title: "Marine Conservation Partnership",
+    eligibility: "Community groups and NGOs working on marine ecosystem protection",
+    deadline: "Aug 15, 2026",
+    amount: "$8,000–$25,000",
     type: "Partnership",
-    amount: "In-kind + Technical Support",
-    deadline: "Rolling",
-    region: "Philippines",
-    focus: ["Marine"],
-    eligibility: "Community groups in coastal areas",
-    description: "Partnership programme offering technical expertise, equipment, and training for marine conservation projects. Partners gain access to WWF's monitoring tools and networks.",
+    region: "Global",
+    focus: "Marine",
     featured: false,
-    saved: false,
+    description: "Partnership grants for grassroots marine conservation efforts, particularly coral reef and seagrass restoration.",
   },
   {
     id: 7,
-    title: "Zero Waste Community Fund",
-    funder: "Global Alliance for Incinerator Alternatives",
-    logo: "GAIA",
-    logoColor: "bg-lime-700",
+    funder: "JICA",
+    title: "Agricultural Innovation & Food Security Grant",
+    eligibility: "Farmer cooperatives, agricultural NGOs, research institutions",
+    deadline: "Sep 30, 2026",
+    amount: "¥2,000,000",
     type: "Grant",
-    amount: "Up to $30,000",
-    deadline: "March 31, 2026",
-    region: "Southeast Asia",
-    focus: ["Urban", "Education"],
-    eligibility: "Grassroots organizations and cooperatives",
-    description: "Small grants for community-led zero waste initiatives, repair cafés, composting programs, and plastic reduction campaigns.",
+    region: "Philippines",
+    focus: "Agriculture",
     featured: false,
-    saved: false,
+    description: "Supports innovative agricultural projects that improve food security and climate-resilient farming practices.",
   },
   {
     id: 8,
-    title: "Agroforestry Innovation Grant",
-    funder: "World Agroforestry Centre",
-    logo: "WAC",
-    logoColor: "bg-amber-700",
-    type: "Grant",
-    amount: "Up to $75,000",
-    deadline: "May 31, 2026",
-    region: "Southeast Asia",
-    focus: ["Agriculture", "Reforestation"],
-    eligibility: "Research institutions and community organizations",
-    description: "Supports innovative agroforestry projects that combine food production with forest restoration. Particularly interested in indigenous and traditional knowledge integration.",
+    funder: "Skoll Foundation",
+    title: "Social Enterprise Climate Impact Award",
+    eligibility: "Social enterprises with proven climate impact model operating for 2+ years",
+    deadline: "Oct 1, 2026",
+    amount: "$100,000",
+    type: "Fellowship",
+    region: "Global",
+    focus: "Education",
     featured: false,
-    saved: false,
+    description: "Recognizes and funds social entrepreneurs tackling climate change with scalable, evidence-based solutions.",
+  },
+  {
+    id: 9,
+    funder: "GrowLocal PH",
+    title: "Micro-Grant for Urban Garden Community Projects",
+    eligibility: "Community groups, barangay associations, and urban farming cooperatives",
+    deadline: "Apr 20, 2026",
+    amount: "₱15,000–₱50,000",
+    type: "Grant",
+    region: "Philippines",
+    focus: "Agriculture",
+    featured: false,
+    communityPosted: true,
+    description: "Small grants to help community groups establish urban food gardens in shared spaces, schools, and public areas.",
+  },
+  {
+    id: 10,
+    funder: "ReCircle Community Fund",
+    title: "Seed Funding for Zero-Waste Initiatives",
+    eligibility: "Volunteer groups, social enterprises, and youth-led organisations working on waste reduction",
+    deadline: "May 5, 2026",
+    amount: "$2,000–$8,000",
+    type: "In-kind Support",
+    region: "Southeast Asia",
+    focus: "Circular Economy",
+    featured: false,
+    communityPosted: true,
+    description: "Supports zero-waste champions with seed funding, tools, and network access to launch community recycling and repair initiatives.",
   },
 ];
 
-const resourceCategories = [
+const RESOURCE_SECTIONS = [
   {
-    title: "Grant Writing Guides",
-    icon: <FileText className="w-5 h-5" />,
-    items: ["How to Write a Climate Grant Proposal", "Impact Measurement Frameworks", "Budgeting for Climate Projects", "Common Grant Mistakes to Avoid"],
+    title: "Grant Writing Resources",
+    items: [
+      "How to Write a Winning Climate Grant Proposal",
+      "Logic Model Template for Environmental Projects",
+      "M&E Framework for Climate Initiatives",
+      "Sample Budget Template (UNDP/USAID format)",
+    ],
   },
   {
-    title: "Climate Skills Toolkit",
-    icon: <BookOpen className="w-5 h-5" />,
-    items: ["Urban Farming Starter Guide", "Community Solar Installation Manual", "Composting Best Practices", "GIS Mapping for Environmental Work"],
+    title: "Legal & Compliance",
+    items: [
+      "NGO Registration Guide (Philippines)",
+      "Reporting Requirements for International Grants",
+      "Financial Management for Grant Recipients",
+    ],
   },
   {
-    title: "Community Building",
-    icon: <Users className="w-5 h-5" />,
-    items: ["Running Effective Community Meetings", "Volunteer Management Templates", "Partnership Agreement Templates", "Impact Reporting for Communities"],
-  },
-  {
-    title: "Policy & Advocacy",
-    icon: <Lightbulb className="w-5 h-5" />,
-    items: ["Philippine Climate Policy Overview", "How to Engage with Local Government", "Climate Litigation Basics", "IPCC Key Findings for Community Action"],
+    title: "Impact Measurement",
+    items: [
+      "Carbon Footprint Calculation Methodologies",
+      "Community Impact Assessment Templates",
+      "Biodiversity Monitoring Protocols",
+    ],
   },
 ];
 
-const filterTypes = ["All", "Grant", "Fellowship", "In-kind Support", "Partnership"];
-const filterFocus = ["All Focus Areas", "Reforestation", "Energy", "Marine", "Urban", "Agriculture", "Disaster Response", "Education"];
+const TYPES = ["All", "Grant", "Fellowship", "In-kind Support", "Partnership"];
+const FOCUS_FILTERS = ["All Focus Areas", "Reforestation", "Marine", "Urban", "Agriculture", "Clean Energy", "Disaster Response", "Education", "Circular Economy"];
 
-export function FundingResources() {
+export function Funding() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState("All");
   const [selectedFocus, setSelectedFocus] = useState("All Focus Areas");
-  const [savedGrants, setSavedGrants] = useState<number[]>([]);
-  const [openSection, setOpenSection] = useState<string | null>("Grant Writing Guides");
+  const [savedMap, setSavedMap] = useState<Record<number, boolean>>({});
+  const [openSection, setOpenSection] = useState<string | null>(null);
 
-  const toggleSave = (id: number) => {
-    setSavedGrants(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
-  };
-
-  const filtered = grants.filter(g => {
-    const matchSearch = g.title.toLowerCase().includes(search.toLowerCase()) ||
+  const filtered = ALL_GRANTS.filter(g => {
+    const matchesType = selectedType === "All" || g.type === selectedType;
+    const matchesFocus = selectedFocus === "All Focus Areas" || g.focus === selectedFocus;
+    const matchesSearch = g.title.toLowerCase().includes(search.toLowerCase()) ||
       g.funder.toLowerCase().includes(search.toLowerCase());
-    const matchType = selectedType === "All" || g.type === selectedType;
-    const matchFocus = selectedFocus === "All Focus Areas" || g.focus.includes(selectedFocus);
-    return matchSearch && matchType && matchFocus;
+    return matchesType && matchesFocus && matchesSearch;
   });
 
-  const featured = filtered.filter(g => g.featured);
-  const regular = filtered.filter(g => !g.featured);
+  const toggleSave = (id: number) =>
+    setSavedMap(prev => ({ ...prev, [id]: !prev[id] }));
 
   return (
-    <div className="min-h-screen bg-[#F9FDFB]">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-[#0F3D2E] to-[#1A5C43] py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <DollarSign className="w-6 h-6 text-[#6DD4A8]" />
-              <span className="text-[#6DD4A8] font-semibold text-sm uppercase tracking-wider">Funding Resources</span>
+    <div className="min-h-screen" style={{ background: "#F9FAFB" }}>
+      {/* ── Page Header ── */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-3"
+                style={{ background: "#E6F4EE", border: "1px solid #BBF7D0" }}>
+                <DollarSign className="w-3.5 h-3.5" style={{ color: "#2F8F6B" }} />
+                <span className="text-xs" style={{ color: "#0F3D2E", fontWeight: 600 }}>Updated weekly · {ALL_GRANTS.length} opportunities</span>
+              </div>
+              <h1 style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, color: "#0F3D2E", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+                Fund Your Climate Project
+              </h1>
+              <p className="mt-1" style={{ color: "#6B7280", maxWidth: "500px" }}>
+                Discover grants, fellowships, and partnerships to power your environmental mission.
+              </p>
             </div>
-            <h1 className="text-white font-[Manrope] font-bold text-3xl md:text-4xl mb-3">
-              Fund Your Climate Mission
-            </h1>
-            <p className="text-[#A8D5BF] text-base">
-              Discover grants, fellowships, and partnerships available for climate projects in your region.
-            </p>
+            {/* Post a Funding button */}
+            <Link
+              to="/post-funding"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white text-sm shrink-0 transition-all"
+              style={{
+                background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)",
+                fontWeight: 700,
+                boxShadow: "0 4px 14px rgba(47,143,107,0.35)",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(47,143,107,0.45)")}
+              onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 4px 14px rgba(47,143,107,0.35)")}
+            >
+              <Plus className="w-4 h-4" />
+              Post a Funding Opportunity
+            </Link>
           </div>
 
-          {/* Search */}
-          <div className="max-w-2xl mx-auto mt-8">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search grants, funders, focus areas..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-2xl text-sm border-0 focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/50 shadow-lg"
-              />
-            </div>
-          </div>
-
-          {/* Filter pills */}
-          <div className="flex flex-wrap justify-center gap-2 mt-5">
-            {filterTypes.map(type => (
-              <button
-                key={type}
-                onClick={() => setSelectedType(type)}
-                className={`text-sm font-medium px-4 py-2 rounded-full transition-colors ${
-                  selectedType === type
-                    ? "bg-white text-[#0F3D2E]"
-                    : "bg-white/10 text-white/80 hover:bg-white/20"
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+          {/* Search bar */}
+          <div className="flex items-center gap-3 mt-6 max-w-lg px-4 py-3 rounded-xl"
+            style={{ background: "#F9FAFB", border: "1.5px solid #E5E7EB" }}>
+            <Search className="w-4 h-4 shrink-0" style={{ color: "#9CA3AF" }} />
+            <input type="text" placeholder="Search grants, funders, focus areas..." value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="flex-1 bg-transparent outline-none text-sm" style={{ color: "#374151" }} />
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Focus filter */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Filter className="w-4 h-4" />
-            <span className="font-medium">Filter by focus:</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
+        {/* Filter bar */}
+        <div className="rounded-2xl p-4 mb-6 flex flex-wrap gap-3 items-center"
+          style={{ background: "white", border: "1px solid #E5E7EB" }}>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4" style={{ color: "#9CA3AF" }} />
+            <span className="text-xs" style={{ fontWeight: 600, color: "#374151" }}>Type:</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {filterFocus.map(f => (
-              <button
-                key={f}
-                onClick={() => setSelectedFocus(f)}
-                className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-                  selectedFocus === f
-                    ? "bg-[#0F3D2E] text-white"
-                    : "bg-white border border-gray-200 text-gray-600 hover:border-[#2F8F6B]"
-                }`}
-              >
-                {f}
+            {TYPES.map(type => (
+              <button key={type} onClick={() => setSelectedType(type)}
+                className="px-3 py-1.5 rounded-full text-xs transition-all"
+                style={{ background: selectedType === type ? "#0F3D2E" : "#F3F4F6", color: selectedType === type ? "white" : "#6B7280", fontWeight: selectedType === type ? 700 : 500 }}>
+                {type}
+              </button>
+            ))}
+          </div>
+          <div className="h-4 w-px hidden sm:block" style={{ background: "#E5E7EB" }} />
+          <div className="flex flex-wrap gap-2">
+            {FOCUS_FILTERS.slice(0, 5).map(focus => (
+              <button key={focus} onClick={() => setSelectedFocus(focus)}
+                className="px-3 py-1.5 rounded-full text-xs transition-all"
+                style={{ background: selectedFocus === focus ? "#2F8F6B" : "#F3F4F6", color: selectedFocus === focus ? "white" : "#6B7280", fontWeight: selectedFocus === focus ? 700 : 500 }}>
+                {focus}
               </button>
             ))}
           </div>
         </div>
 
         {/* Featured grants */}
-        {featured.length > 0 && (
+        {search === "" && selectedType === "All" && selectedFocus === "All Focus Areas" && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-              <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl">Featured Opportunities</h2>
+              <Star className="w-4 h-4" style={{ color: "#FBBF24", fill: "#FBBF24" }} />
+              <h2 style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, color: "#0F3D2E" }}>
+                Featured Opportunities
+              </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {featured.map(grant => (
-                <GrantCard key={grant.id} grant={grant} saved={savedGrants.includes(grant.id)} onToggleSave={() => toggleSave(grant.id)} />
+              {FEATURED_GRANTS.map(grant => (
+                <div
+                  key={grant.id}
+                  className="rounded-2xl p-5 transition-all duration-200 relative"
+                  style={{
+                    background: "white",
+                    border: (grant as any).urgent ? "2px solid #EF4444" : "1px solid #E5E7EB",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 8px 25px rgba(15,61,46,0.1)")}
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)")}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        <span
+                          className="px-2 py-0.5 rounded-full text-xs"
+                          style={{ background: "#FEF3C7", color: "#D97706", fontWeight: 700 }}
+                        >
+                          ⭐ Featured
+                        </span>
+                        {(grant as any).urgent && (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-xs"
+                            style={{ background: "#FEE2E2", color: "#DC2626", fontWeight: 700 }}
+                          >
+                            ⚠️ Closing Soon
+                          </span>
+                        )}
+                        <span
+                          className="px-2 py-0.5 rounded-full text-xs"
+                          style={{ background: "#E6F4EE", color: "#2F8F6B", fontWeight: 700 }}
+                        >
+                          {grant.type}
+                        </span>
+                      </div>
+                      <div className="text-xs" style={{ color: "#9CA3AF", fontWeight: 600 }}>{grant.funder}</div>
+                    </div>
+                    <button
+                      onClick={() => toggleSave(grant.id)}
+                      className="p-1.5 rounded-lg transition-colors"
+                      style={{ background: savedMap[grant.id] ? "#E6F4EE" : "#F3F4F6" }}
+                    >
+                      {savedMap[grant.id]
+                        ? <BookmarkCheck className="w-4 h-4" style={{ color: "#2F8F6B" }} />
+                        : <Bookmark className="w-4 h-4" style={{ color: "#9CA3AF" }} />
+                      }
+                    </button>
+                  </div>
+
+                  <h3
+                    className="mb-2"
+                    style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, color: "#0F3D2E", fontSize: "0.95rem", lineHeight: 1.4 }}
+                  >
+                    {grant.title}
+                  </h3>
+                  <p className="text-xs mb-4" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+                    {grant.description}
+                  </p>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-start gap-2 text-xs">
+                      <span style={{ color: "#9CA3AF", minWidth: "72px" }}>Eligibility:</span>
+                      <span style={{ color: "#374151", lineHeight: 1.5 }}>{grant.eligibility}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Calendar className="w-3 h-3 shrink-0" style={{ color: "#9CA3AF" }} />
+                      <span style={{ color: "#374151" }}>Deadline: <strong>{grant.deadline}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <DollarSign className="w-3 h-3 shrink-0" style={{ color: "#9CA3AF" }} />
+                      <span style={{ color: "#0F3D2E", fontWeight: 700 }}>{grant.amount}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Globe className="w-3 h-3 shrink-0" style={{ color: "#9CA3AF" }} />
+                      <span style={{ color: "#374151" }}>{grant.region}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      className="flex-1 py-2 rounded-lg text-sm flex items-center justify-center gap-1.5 transition-all"
+                      style={{
+                        background: "linear-gradient(135deg, #0F3D2E, #2F8F6B)",
+                        color: "white",
+                        fontWeight: 700,
+                      }}
+                    >
+                      View Details <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => toggleSave(grant.id)}
+                      className="px-3 py-2 rounded-lg text-sm transition-all"
+                      style={{
+                        background: savedMap[grant.id] ? "#E6F4EE" : "#F3F4F6",
+                        color: savedMap[grant.id] ? "#2F8F6B" : "#374151",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {savedMap[grant.id] ? "Saved ✓" : "Save"}
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* All grants */}
-        {regular.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl">All Opportunities</h2>
-              <span className="text-sm text-gray-500">{filtered.length} total</span>
+        {/* All Grants */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, color: "#0F3D2E" }}>
+              {search || selectedType !== "All" || selectedFocus !== "All Focus Areas"
+                ? `${filtered.length} results found`
+                : "All Opportunities"}
+            </h2>
+            {/* Community posted indicator */}
+            <div className="flex items-center gap-1.5 text-xs" style={{ color: "#9CA3AF" }}>
+              <span className="w-2 h-2 rounded-full inline-block" style={{ background: "#0EA5E9" }} />
+              Community-posted included
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {regular.map(grant => (
-                <GrantCard key={grant.id} grant={grant} saved={savedGrants.includes(grant.id)} onToggleSave={() => toggleSave(grant.id)} />
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 rounded-2xl" style={{ background: "white", border: "1px solid #E5E7EB" }}>
+              <TrendingUp className="w-12 h-12 mx-auto mb-3" style={{ color: "#D1D5DB" }} />
+              <p style={{ color: "#9CA3AF" }}>No grants found. Try different filters.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map(grant => (
+                <div
+                  key={grant.id}
+                  className="rounded-2xl p-5 flex flex-col sm:flex-row gap-4 transition-all"
+                  style={{
+                    background: "white",
+                    border: (grant as any).communityPosted ? "1.5px solid #BAE6FD" : "1px solid #E5E7EB",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(15,61,46,0.08)")}
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
+                >
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-xs" style={{ fontWeight: 700, color: "#9CA3AF" }}>{grant.funder}</span>
+                      {(grant as any).communityPosted ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs flex items-center gap-1"
+                          style={{ background: "#E0F2FE", color: "#0369A1", fontWeight: 700 }}>
+                          <Users className="w-3 h-3" />Community
+                        </span>
+                      ) : null}
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs"
+                        style={{ background: "#E6F4EE", color: "#2F8F6B", fontWeight: 700 }}
+                      >
+                        {grant.type}
+                      </span>
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs"
+                        style={{ background: "#F3F4F6", color: "#6B7280", fontWeight: 600 }}
+                      >
+                        {grant.focus}
+                      </span>
+                      {grant.featured && (
+                        <span
+                          className="px-2 py-0.5 rounded-full text-xs"
+                          style={{ background: "#FEF3C7", color: "#D97706", fontWeight: 700 }}
+                        >
+                          ⭐ Featured
+                        </span>
+                      )}
+                    </div>
+                    <h3
+                      className="mb-1"
+                      style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, color: "#0F3D2E", fontSize: "0.95rem" }}
+                    >
+                      {grant.title}
+                    </h3>
+                    <p className="text-xs mb-2" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+                      {grant.eligibility}
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-xs" style={{ color: "#9CA3AF" }}>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" /> {grant.deadline}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <DollarSign className="w-3 h-3" />
+                        <span style={{ fontWeight: 700, color: "#0F3D2E" }}>{grant.amount}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Globe className="w-3 h-3" /> {grant.region}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex sm:flex-col gap-2 sm:items-end justify-end">
+                    <button
+                      className="px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-all whitespace-nowrap"
+                      style={{
+                        background: "linear-gradient(135deg, #0F3D2E, #2F8F6B)",
+                        color: "white",
+                        fontWeight: 700,
+                      }}
+                    >
+                      View Details <ExternalLink className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => toggleSave(grant.id)}
+                      className="px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-all whitespace-nowrap"
+                      style={{
+                        background: savedMap[grant.id] ? "#E6F4EE" : "#F3F4F6",
+                        color: savedMap[grant.id] ? "#2F8F6B" : "#374151",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {savedMap[grant.id] ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
+                      {savedMap[grant.id] ? "Saved" : "Save Grant"}
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {filtered.length === 0 && (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-8 h-8 text-gray-400" />
-            </div>
-            <p className="font-[Manrope] font-bold text-gray-500 text-lg">No grants found</p>
-            <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filters.</p>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Resource Library */}
-        <div className="mt-6">
-          <div className="flex items-center gap-2 mb-5">
-            <BookOpen className="w-5 h-5 text-[#2F8F6B]" />
-            <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl">Resource Library</h2>
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Leaf className="w-4 h-4" style={{ color: "#2F8F6B" }} />
+            <h2 style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, color: "#0F3D2E" }}>
+              Resource Library
+            </h2>
           </div>
           <div className="space-y-3">
-            {resourceCategories.map((cat) => (
-              <div key={cat.title} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {RESOURCE_SECTIONS.map(section => (
+              <div
+                key={section.title}
+                className="rounded-2xl overflow-hidden"
+                style={{ background: "white", border: "1px solid #E5E7EB" }}
+              >
                 <button
-                  onClick={() => setOpenSection(openSection === cat.title ? null : cat.title)}
-                  className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
+                  onClick={() => setOpenSection(openSection === section.title ? null : section.title)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-[#E6F4EE] rounded-xl flex items-center justify-center text-[#2F8F6B]">
-                      {cat.icon}
-                    </div>
-                    <span className="font-[Manrope] font-bold text-[#0F3D2E]">{cat.title}</span>
-                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                      {cat.items.length} resources
-                    </span>
-                  </div>
-                  {openSection === cat.title ? (
-                    <ChevronUp className="w-4 h-4 text-gray-400" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                  )}
+                  <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, color: "#0F3D2E", fontSize: "0.95rem" }}>
+                    {section.title}
+                  </span>
+                  {openSection === section.title
+                    ? <ChevronDown className="w-4 h-4" style={{ color: "#9CA3AF" }} />
+                    : <ChevronRight className="w-4 h-4" style={{ color: "#9CA3AF" }} />
+                  }
                 </button>
-                {openSection === cat.title && (
-                  <div className="border-t border-gray-100 divide-y divide-gray-50">
-                    {cat.items.map((item) => (
-                      <div key={item} className="flex items-center justify-between px-5 py-3 hover:bg-[#F9FDFB] transition-colors">
-                        <div className="flex items-center gap-2.5">
-                          <CheckCircle className="w-4 h-4 text-[#2F8F6B]" />
-                          <span className="text-sm text-gray-700">{item}</span>
-                        </div>
-                        <button className="flex items-center gap-1 text-xs text-[#2F8F6B] font-medium hover:text-[#0F3D2E] transition-colors">
-                          View <ExternalLink className="w-3 h-3" />
-                        </button>
-                      </div>
+                {openSection === section.title && (
+                  <div className="px-5 pb-4 space-y-2" style={{ borderTop: "1px solid #E5E7EB" }}>
+                    {section.items.map(item => (
+                      <a
+                        key={item}
+                        href="#"
+                        className="flex items-center gap-2 py-2.5 text-sm transition-colors"
+                        style={{ color: "#374151" }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#2F8F6B")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "#374151")}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0" style={{ color: "#9CA3AF" }} />
+                        {item}
+                      </a>
                     ))}
                   </div>
                 )}
@@ -358,83 +564,6 @@ export function FundingResources() {
             ))}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function GrantCard({ grant, saved, onToggleSave }: { grant: any; saved: boolean; onToggleSave: () => void }) {
-  const typeColor: Record<string, string> = {
-    Grant: "bg-[#E6F4EE] text-[#0F3D2E]",
-    Fellowship: "bg-blue-100 text-blue-700",
-    "In-kind Support": "bg-purple-100 text-purple-700",
-    Partnership: "bg-amber-100 text-amber-700",
-  };
-
-  const isUrgent = grant.deadline !== "Rolling" && new Date(grant.deadline) < new Date("2026-04-01");
-
-  return (
-    <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col ${grant.featured ? "border-[#2F8F6B]/20" : "border-gray-100"}`}>
-      <div className="p-5 flex-1">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 ${grant.logoColor} rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-              {grant.logo}
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">{grant.funder}</p>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${typeColor[grant.type] || "bg-gray-100 text-gray-600"}`}>
-                {grant.type}
-              </span>
-            </div>
-          </div>
-          <button onClick={onToggleSave} className="flex-shrink-0">
-            <Bookmark className={`w-4 h-4 transition-colors ${saved ? "fill-[#2F8F6B] text-[#2F8F6B]" : "text-gray-300 hover:text-[#2F8F6B]"}`} />
-          </button>
-        </div>
-
-        <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-base mb-2 leading-tight">{grant.title}</h3>
-        <p className="text-xs text-gray-500 leading-relaxed mb-3 line-clamp-3">{grant.description}</p>
-
-        <div className="space-y-1.5 text-xs text-gray-600">
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-3.5 h-3.5 text-[#2F8F6B]" />
-            <span className="font-medium">{grant.amount}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className={`w-3.5 h-3.5 ${isUrgent ? "text-red-500" : "text-gray-400"}`} />
-            <span className={isUrgent ? "text-red-600 font-semibold" : ""}>
-              Deadline: {grant.deadline}
-              {isUrgent && " ⚡"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Globe className="w-3.5 h-3.5 text-gray-400" />
-            <span>{grant.region}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {grant.focus.map((f: string) => (
-            <span key={f} className="text-[10px] font-medium bg-[#E6F4EE] text-[#0F3D2E] px-2 py-0.5 rounded-full">
-              {f}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-5 pb-5 flex gap-2">
-        <button className="flex-1 flex items-center justify-center gap-1.5 bg-[#0F3D2E] text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-[#2F8F6B] transition-colors">
-          View Details <ExternalLink className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={onToggleSave}
-          className={`px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
-            saved ? "bg-[#E6F4EE] border-[#2F8F6B]/30 text-[#0F3D2E]" : "border-gray-200 text-gray-500 hover:border-[#2F8F6B]/50"
-          }`}
-        >
-          <Bookmark className={`w-4 h-4 ${saved ? "fill-[#2F8F6B] text-[#2F8F6B]" : ""}`} />
-        </button>
       </div>
     </div>
   );

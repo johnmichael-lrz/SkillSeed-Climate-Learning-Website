@@ -84,7 +84,13 @@ export function VerifierDashboard() {
 
     setProcessingId(submission.id);
     try {
-      await rejectSubmission(submission.id, reason);
+      await rejectSubmission(
+        submission.id,
+        reason,
+        profile.id,
+        submission.user_id,
+        submission.quest_id
+      );
       toast.success('Submission rejected with feedback.');
       setSubmissions(prev => prev.filter(s => s.id !== submission.id));
     } catch (err) {

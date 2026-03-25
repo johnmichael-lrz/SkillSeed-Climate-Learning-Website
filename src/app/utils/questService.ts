@@ -257,6 +257,20 @@ export async function awardBadge(
 // Verifier Functions
 // ============================================================================
 
+async function tryLogQuestVerificationAudit(row: {
+  quest_progress_id: string;
+  learner_profile_id: string;
+  quest_id: string;
+  verifier_profile_id: string;
+  action: 'verify' | 'reject';
+  rejection_reason?: string | null;
+}): Promise<void> {
+  const { error } = await supabase.from('quest_verification_audit').insert(row);
+  if (error) {
+    console.warn('quest_verification_audit insert failed (non-fatal):', error);
+  }
+}
+
 export async function fetchPendingSubmissions(): Promise<QuestProgressWithDetails[]> {
   const { data, error } = await supabase
     .from('quest_progress')
@@ -293,13 +307,23 @@ export async function verifySubmission(
     throw error;
   }
 
-  // Award the badge
   await awardBadge(questId, userId);
+
+  await tryLogQuestVerificationAudit({
+    quest_progress_id: progressId,
+    learner_profile_id: userId,
+    quest_id: questId,
+    verifier_profile_id: verifierId,
+    action: 'verify',
+  });
 }
 
 export async function rejectSubmission(
   progressId: string,
-  reason: string
+  reason: string,
+  verifierProfileId: string,
+  learnerProfileId: string,
+  questId: string
 ): Promise<void> {
   const { error } = await supabase
     .from('quest_progress')
@@ -313,6 +337,15 @@ export async function rejectSubmission(
     console.error('Error rejecting submission:', error);
     throw error;
   }
+
+  await tryLogQuestVerificationAudit({
+    quest_progress_id: progressId,
+    learner_profile_id: learnerProfileId,
+    quest_id: questId,
+    verifier_profile_id: verifierProfileId,
+    action: 'reject',
+    rejection_reason: reason,
+  });
 }
 
 // ============================================================================
@@ -376,4 +409,27 @@ export async function fetchQuestStats(): Promise<{
   const advancedCount = data?.filter(q => q.tier === 'advanced').length ?? 0;
 
   return { beginnerCount, advancedCount };
+}
+
+/** Aggregate quest completion counts (requires migration 007 + verified submissions). */
+export async function fetchImpactSummary(): Promise<{
+  total_quest_completions: number;
+  completions_last_30_days: number;
+  completions_last_7_days: number;
+} | null> {
+  const { data, error } = await supabase.rpc('get_impact_summary');
+
+  if (error) {
+    console.warn('get_impact_summary RPC failed — run latest Supabase migrations?', error);
+    return null;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+
+  return {
+    total_quest_completions: Number(row.total_quest_completions ?? 0),
+    completions_last_30_days: Number(row.completions_last_30_days ?? 0),
+    completions_last_7_days: Number(row.completions_last_7_days ?? 0),
+  };
 }

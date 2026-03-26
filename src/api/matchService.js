@@ -25,3 +25,36 @@ export async function fetchMatchesForProject(projectId) {
     throw err;
   }
 }
+
+import { supabase } from '../lib/supabaseClient';
+
+export async function applyToProject(projectId, userId, message, role) {
+  // 1. Check if the message is empty BEFORE sending to the database
+  if (!message || message.trim().length < 5) {
+    return { success: false, error: "Please enter a message (at least 5 characters) before applying." };
+  }
+
+  try {
+    // 2. Try to insert the application into Supabase
+    const { data, error } = await supabase
+      .from('connections')
+      .insert([{ 
+        project_id: projectId, 
+        responder_id: userId, 
+        message: message.trim(),
+        role: role,
+        status: 'pending' 
+      }]);
+
+    // 3. Catch database errors (like if they already applied)
+    if (error) {
+      console.error("Supabase Error:", error);
+      return { success: false, error: "Failed to submit application. Please try again." };
+    }
+
+    return { success: true, data: data };
+
+  } catch (err) {
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}

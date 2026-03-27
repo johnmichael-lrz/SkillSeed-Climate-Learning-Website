@@ -154,7 +154,7 @@ export function FeedCard({ item, isLiked, userId, onOpenChallenge, onLikeUpdate 
           </p>
         )}
         {item.impact_summary && (
-          <p className="text-[#6DD4A8] text-xs mt-2">🌱 {item.impact_summary}</p>
+          <p className="text-[#6DD4A8] text-xs mt-2">{item.impact_summary}</p>
         )}
       </div>
 

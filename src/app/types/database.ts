@@ -28,6 +28,8 @@ export interface Profile {
   credentials_url: string | null;
   avatar_url: string | null;
   is_verifier: boolean;
+  is_super_admin: boolean;
+  admin_role: 'content_moderator' | 'challenge_manager' | 'user_manager' | 'super_admin' | null;
   created_at: string;
   updated_at: string;
 }

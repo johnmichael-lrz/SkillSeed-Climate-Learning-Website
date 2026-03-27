@@ -31,6 +31,17 @@ const CATEGORIES = [
 
 const DIFFICULTIES: ChallengeDifficulty[] = ["Beginner", "Intermediate", "Advanced"];
 
+// Points range enforced per difficulty level
+const POINTS_RANGE: Record<ChallengeDifficulty, { min: number; max: number; default: number }> = {
+  Beginner:     { min: 50,  max: 200,  default: 100 },
+  Intermediate: { min: 201, max: 500,  default: 300 },
+  Advanced:     { min: 501, max: 1000, default: 750 },
+};
+
+function getPointsRange(difficulty: ChallengeDifficulty) {
+  return POINTS_RANGE[difficulty] ?? POINTS_RANGE["Beginner"];
+}
+
 interface CreateChallengeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -69,8 +80,11 @@ export function CreateChallengeModal({
     if (!formData.deadline) {
       newErrors.deadline = "Deadline is required";
     }
-    if (formData.points_reward < 1) {
-      newErrors.points_reward = "Points must be at least 1";
+
+    // Validate points against difficulty range
+    const { min, max } = getPointsRange(formData.difficulty as ChallengeDifficulty);
+    if (formData.points_reward < min || formData.points_reward > max) {
+      newErrors.points_reward = `${formData.difficulty} challenges must be between ${min}–${max} points`;
     }
 
     setErrors(newErrors);
@@ -108,10 +122,22 @@ export function CreateChallengeModal({
     field: keyof CreateChallengeInput,
     value: string | number
   ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      // When difficulty changes, reset points_reward to the new difficulty's default
+      if (field === "difficulty") {
+        const { default: defaultPts } = getPointsRange(value as ChallengeDifficulty);
+        updated.points_reward = defaultPts;
+      }
+      return updated;
+    });
+    // Clear error when user edits the field
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+    // Also clear points error when difficulty changes (points will be reset)
+    if (field === "difficulty" && errors.points_reward) {
+      setErrors((prev) => ({ ...prev, points_reward: undefined }));
     }
   };
 
@@ -247,14 +273,17 @@ export function CreateChallengeModal({
               <Input
                 id="points"
                 type="number"
-                min={1}
-                max={1000}
+                min={getPointsRange(formData.difficulty as ChallengeDifficulty).min}
+                max={getPointsRange(formData.difficulty as ChallengeDifficulty).max}
                 value={formData.points_reward}
                 onChange={(e) =>
-                  handleChange("points_reward", parseInt(e.target.value) || 100)
+                  handleChange("points_reward", parseInt(e.target.value) || getPointsRange(formData.difficulty as ChallengeDifficulty).default)
                 }
                 className={errors.points_reward ? "border-red-500" : ""}
               />
+              <p className="text-xs text-gray-400">
+                {formData.difficulty}: {getPointsRange(formData.difficulty as ChallengeDifficulty).min}–{getPointsRange(formData.difficulty as ChallengeDifficulty).max} pts
+              </p>
               {errors.points_reward && (
                 <p className="text-red-500 text-xs">{errors.points_reward}</p>
               )}

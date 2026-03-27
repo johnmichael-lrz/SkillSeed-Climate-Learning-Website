@@ -127,9 +127,10 @@ export function MissionDashboard() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedRegion, setSelectedRegion] = useState("All Regions");
+  const [participantType, setParticipantType] = useState<"all" | "volunteer" | "student" | "professional">("all");
+  const [sortBy, setSortBy] = useState<"best_match" | "urgent_first" | "most_needed" | "newest">("best_match");
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [showPostModal, setShowPostModal] = useState(false);
   
   // Real data from Supabase
   const [missions, setMissions] = useState<MissionCard[]>([]);
@@ -149,6 +150,9 @@ export function MissionDashboard() {
   >({});
   const [posterVerifiedByUserId, setPosterVerifiedByUserId] = useState<
     Record<string, { verified: boolean; name?: string | null; avatar_url?: string | null }>
+  >({});
+  const [pipelineByProject, setPipelineByProject] = useState<
+    Record<string, { pending: number; accepted: number; declined: number }>
   >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -243,6 +247,38 @@ export function MissionDashboard() {
         } else {
           setApplicationStatusByProject({});
         }
+
+        // Poster pipeline metrics for "My Projects": pending / accepted / declined.
+        if (user && userProjects.length > 0) {
+          const userProjectIds = userProjects.map((p) => p.id);
+          const { data: posterConnections, error: posterConnError } = await supabase
+            .from("connections")
+            .select("project_id, status")
+            .eq("poster_id", user.id)
+            .in("project_id", userProjectIds);
+
+          if (!posterConnError && Array.isArray(posterConnections)) {
+            const pipelineMap: typeof pipelineByProject = {};
+            for (const id of userProjectIds) {
+              pipelineMap[id] = { pending: 0, accepted: 0, declined: 0 };
+            }
+            for (const row of posterConnections) {
+              const key = String(row.project_id);
+              if (!pipelineMap[key]) {
+                pipelineMap[key] = { pending: 0, accepted: 0, declined: 0 };
+              }
+              if (row.status === "pending") pipelineMap[key].pending += 1;
+              if (row.status === "accepted") pipelineMap[key].accepted += 1;
+              if (row.status === "declined") pipelineMap[key].declined += 1;
+            }
+            setPipelineByProject(pipelineMap);
+          } else {
+            console.warn("Poster pipeline query failed (non-fatal):", posterConnError);
+            setPipelineByProject({});
+          }
+        } else {
+          setPipelineByProject({});
+        }
       } catch (err) {
         setError("Failed to load projects");
         console.error(err);
@@ -260,13 +296,17 @@ export function MissionDashboard() {
     const matchCat = selectedCategory === "All" || (m.focus_area?.some(f => f.toLowerCase().includes(selectedCategory.toLowerCase())) || false);
     const matchRegion = selectedRegion === "All Regions" || m.region === selectedRegion;
     const matchUrgent = !urgentOnly || m.type === "urgent";
+    const matchParticipantType =
+      participantType === "all" ||
+      (participantType === "professional" && (m.professionals_needed ?? 0) > 0) ||
+      ((participantType === "volunteer" || participantType === "student") && (m.volunteers_needed ?? 0) > 0);
     // Filter by work tab (only for volunteers/professionals, not my_projects)
     const matchWorkTab = workTab === "my_projects" ? true :
       workTab === "volunteers" 
         ? (m.volunteers_needed ?? 0) > 0 
         : (m.professionals_needed ?? 0) > 0;
     // Note: We no longer filter out own projects — instead we show "Your Project" label on the card
-    return matchSearch && matchCat && matchRegion && matchUrgent && matchWorkTab;
+    return matchSearch && matchCat && matchRegion && matchUrgent && matchWorkTab && matchParticipantType;
   });
 
   const urgent = filtered.filter(m => m.type === "urgent");
@@ -279,24 +319,57 @@ export function MissionDashboard() {
     return 2;
   };
   
-  // Sort by urgency first, then by region priority, then by start_date
-  const sorted = [
-    ...urgent.sort((a, b) => {
+  const neededTotal = (project: MissionCard) =>
+    (project.volunteers_needed ?? 0) + (project.professionals_needed ?? 0);
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "most_needed") {
+      return neededTotal(b) - neededTotal(a);
+    }
+    if (sortBy === "newest") {
+      if (a.created_at && b.created_at) {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      return 0;
+    }
+    if (sortBy === "best_match") {
       const scoreDiff = (b.match_score ?? 0) - (a.match_score ?? 0);
       if (scoreDiff !== 0) return scoreDiff;
-      const regionDiff = regionPriority(a.region) - regionPriority(b.region);
-      if (regionDiff !== 0) return regionDiff;
-      if (a.start_date && b.start_date) return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-      return 0;
-    }),
-    ...regular.sort((a, b) => {
-      const scoreDiff = (b.match_score ?? 0) - (a.match_score ?? 0);
-      if (scoreDiff !== 0) return scoreDiff;
-      const regionDiff = regionPriority(a.region) - regionPriority(b.region);
-      if (regionDiff !== 0) return regionDiff;
-      return 0;
-    })
-  ];
+    }
+    if (sortBy === "urgent_first") {
+      const urgentDiff = Number(b.type === "urgent") - Number(a.type === "urgent");
+      if (urgentDiff !== 0) return urgentDiff;
+    }
+    const regionDiff = regionPriority(a.region) - regionPriority(b.region);
+    if (regionDiff !== 0) return regionDiff;
+    if (a.start_date && b.start_date) {
+      return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+    }
+    return 0;
+  });
+
+  const pendingApplicationsTotal = Object.values(pipelineByProject).reduce(
+    (sum, row) => sum + row.pending,
+    0
+  );
+
+  const activeFilterChips: string[] = [
+    search ? `Search: ${search}` : "",
+    selectedRegion !== "All Regions" ? selectedRegion : "",
+    selectedCategory !== "All" ? selectedCategory : "",
+    urgentOnly ? "Urgent only" : "",
+    participantType !== "all" ? `Role: ${participantType}` : "",
+    sortBy !== "best_match" ? `Sort: ${sortBy.replace("_", " ")}` : "",
+  ].filter(Boolean);
+
+  function clearAllFilters() {
+    setSearch("");
+    setSelectedRegion("All Regions");
+    setSelectedCategory("All");
+    setUrgentOnly(false);
+    setParticipantType("all");
+    setSortBy("best_match");
+  }
 
   // Loading state
   if (loading) {
@@ -338,6 +411,20 @@ export function MissionDashboard() {
           <p className="text-[#A8D5BF] mt-2">
             Based on your profile, <span className="text-white font-semibold">{sorted.length} projects match you right now.</span>
           </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+            <div className="rounded-xl bg-white/10 border border-white/20 px-4 py-3">
+              <p className="text-xs text-[#A8D5BF]">Open missions</p>
+              <p className="text-2xl font-bold text-white">{sorted.length}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 border border-white/20 px-4 py-3">
+              <p className="text-xs text-[#A8D5BF]">Urgent missions</p>
+              <p className="text-2xl font-bold text-white">{urgent.length}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 border border-white/20 px-4 py-3">
+              <p className="text-xs text-[#A8D5BF]">Pending applications</p>
+              <p className="text-2xl font-bold text-white">{pendingApplicationsTotal}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -389,6 +476,11 @@ export function MissionDashboard() {
               + Post a Project
             </Link>
           </div>
+          <p className="text-xs text-gray-500 pb-3">
+            {workTab === "my_projects"
+              ? "Track applicants and fill project roles quickly."
+              : "Find missions matched to your skills and availability."}
+          </p>
         </div>
       </div>
 
@@ -424,6 +516,28 @@ export function MissionDashboard() {
               <AlertTriangle className="w-4 h-4" />
               Urgent Only
             </button>
+            <select
+              value={participantType}
+              onChange={(e) => setParticipantType(e.target.value as "all" | "volunteer" | "student" | "professional")}
+              className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 bg-white"
+              aria-label="Participant type filter"
+            >
+              <option value="all">All participants</option>
+              <option value="volunteer">Volunteer</option>
+              <option value="student">Student</option>
+              <option value="professional">Professional</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "best_match" | "urgent_first" | "most_needed" | "newest")}
+              className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 bg-white"
+              aria-label="Sort missions"
+            >
+              <option value="best_match">Best Match</option>
+              <option value="urgent_first">Urgent First</option>
+              <option value="most_needed">Most Needed</option>
+              <option value="newest">Newest</option>
+            </select>
             <div className="flex items-center gap-1 border border-gray-200 rounded-xl p-1">
               <button
                 onClick={() => setViewMode("grid")}
@@ -456,12 +570,32 @@ export function MissionDashboard() {
               </button>
             ))}
           </div>
+
+          {activeFilterChips.length > 0 && (
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              {activeFilterChips.map((chip) => (
+                <span
+                  key={chip}
+                  className="text-xs font-medium px-3 py-1 rounded-full bg-[#E6F4EE] text-[#0F3D2E]"
+                >
+                  {chip}
+                </span>
+              ))}
+              <button
+                onClick={clearAllFilters}
+                className="text-xs font-semibold text-[#2F8F6B] hover:text-[#0F3D2E] underline"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500">
-            <span className="font-semibold text-[#0F3D2E]">{sorted.length}</span> {workTab === 'volunteers' ? 'volunteer' : 'professional'} missions found
+            <span className="font-semibold text-[#0F3D2E]">{sorted.length}</span>{" "}
+            {workTab === 'volunteers' ? 'volunteer' : workTab === "professionals" ? "professional" : "project"} results
             {urgent.length > 0 && (
               <span className="ml-2 text-red-600 font-medium">· {urgent.length} urgent</span>
             )}
@@ -488,7 +622,6 @@ export function MissionDashboard() {
             {viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {sorted.map((mission) => {
-                  const style = getCategoryStyle(mission.focus_area);
                   const isOwner = user && String(mission.poster_id) === String(user.id);
                   const posterInfo = posterVerifiedByUserId[String(mission.poster_id)];
                   const joined = joinedCounts[mission.id];
@@ -526,7 +659,9 @@ export function MissionDashboard() {
                         <p className="text-xs text-gray-400 mb-1 flex items-center gap-2">
                           <span className="truncate">{posterInfo?.name || mission.region || "Organisation"}</span>
                           {posterInfo?.verified ? (
-                            <span className="text-green-500 flex items-center gap-1">✓ Verified</span>
+                            <span className="text-green-500 flex items-center gap-1" title="Verified Organization">
+                              ✓ Verified
+                            </span>
                           ) : (
                             <span className="text-gray-300">Community</span>
                           )}
@@ -538,6 +673,11 @@ export function MissionDashboard() {
                             <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-semibold px-3 py-1 rounded-full">
                               Match: {mission.match_score}
                             </span>
+                            {matchSkills.length > 0 && (
+                              <span className="text-[11px] text-gray-500">
+                                Why you match: {matchSkills[0]}
+                              </span>
+                            )}
                           </div>
                         )}
 
@@ -591,16 +731,16 @@ export function MissionDashboard() {
                           </div>
                         )}
 
-                        {/* Match skills — max 3 shown */}
+                        {/* Match skills — max 2 shown */}
                         <div className="flex flex-wrap gap-1 mb-4">
-                          {matchSkills.slice(0, 3).map((skill) => (
+                          {matchSkills.slice(0, 2).map((skill) => (
                             <span key={skill} className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
                               {skill}
                             </span>
                           ))}
-                          {matchSkills.length > 3 && (
+                          {matchSkills.length > 2 && (
                             <span className="text-gray-400 text-xs px-1">
-                              +{matchSkills.length - 3} more
+                              +{matchSkills.length - 2} more
                             </span>
                           )}
                         </div>
@@ -638,7 +778,6 @@ export function MissionDashboard() {
             ) : (
               <div className="space-y-3">
                 {sorted.map((mission) => {
-                  const style = getCategoryStyle(mission.focus_area);
                   const isOwner = user && String(mission.poster_id) === String(user.id);
                   const posterInfo = posterVerifiedByUserId[String(mission.poster_id)];
                   const joined = joinedCounts[mission.id];
@@ -752,6 +891,7 @@ export function MissionDashboard() {
           <MyProjectsView 
             projects={myProjects} 
             joinedCounts={joinedCounts}
+            pipelineByProject={pipelineByProject}
             onDelete={(projectId) => setMyProjects(prev => prev.filter(p => p.id !== projectId))}
           />
         )}
@@ -763,6 +903,7 @@ export function MissionDashboard() {
 function MyProjectsView({
   projects,
   joinedCounts,
+  pipelineByProject,
   onDelete,
 }: {
   projects: Project[];
@@ -774,6 +915,7 @@ function MyProjectsView({
       pending_applicants: number;
     }
   >;
+  pipelineByProject: Record<string, { pending: number; accepted: number; declined: number }>;
   onDelete: (id: string) => void;
 }) {
   const activeProjects = projects.filter(p => p.status === 'open' && p.type !== 'urgent');
@@ -828,10 +970,25 @@ function MyProjectsView({
   return (
     <div>
       {/* Summary strip */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         {[
           { label: "Active Projects", value: activeProjects.length, color: "bg-green-50 text-green-700 border-green-100" },
           { label: "Urgent Projects", value: urgentProjects.length, color: "bg-red-50 text-red-700 border-red-100" },
+          {
+            label: "Pending",
+            value: Object.values(pipelineByProject).reduce((sum, row) => sum + row.pending, 0),
+            color: "bg-amber-50 text-amber-700 border-amber-100",
+          },
+          {
+            label: "Accepted",
+            value: Object.values(pipelineByProject).reduce((sum, row) => sum + row.accepted, 0),
+            color: "bg-emerald-50 text-emerald-700 border-emerald-100",
+          },
+          {
+            label: "Declined",
+            value: Object.values(pipelineByProject).reduce((sum, row) => sum + row.declined, 0),
+            color: "bg-gray-50 text-gray-700 border-gray-200",
+          },
         ].map(item => (
           <div key={item.label} className={`rounded-xl border p-4 text-center ${item.color}`}>
             <div className="text-3xl font-[Manrope] font-bold">{item.value}</div>
@@ -863,6 +1020,17 @@ function MyProjectsView({
                       {(joinedCounts[project.id]?.professionals_joined ?? 0)}/{project.professionals_needed ?? 0}
                     </span>
                   </div>
+                </div>
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  <span className="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                    Pending: {pipelineByProject[project.id]?.pending ?? 0}
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    Accepted: {pipelineByProject[project.id]?.accepted ?? 0}
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-50 text-gray-700 border border-gray-200">
+                    Declined: {pipelineByProject[project.id]?.declined ?? 0}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">

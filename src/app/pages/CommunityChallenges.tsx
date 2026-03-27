@@ -105,6 +105,14 @@ export function CommunityChallenges() {
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "joined" | "featured" | "feed">("all");
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All Categories");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("All Levels");
+  const [sortBy, setSortBy] = useState<"trending" | "ending_soon" | "most_participants" | "most_points">(
+    "trending"
+  );
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
   const [selectedChallengeForSubmission, setSelectedChallengeForSubmission] = useState<Challenge | null>(null);
@@ -137,6 +145,7 @@ export function CommunityChallenges() {
       setLeaderboard(leaderboardData);
       setFeaturedChallenge(featuredData);
       setFeedItems(feedData);
+      setLastUpdatedAt(new Date());
 
       // If user is logged in, fetch their data
       if (user?.id) {
@@ -261,6 +270,9 @@ export function CommunityChallenges() {
   };
 
   // Filter and sort challenges - algorithmically computed featured challenge appears first
+  const categories = ["All Categories", ...Array.from(new Set(challenges.map((c) => c.category || "General")))];
+  const difficulties = ["All Levels", ...Array.from(new Set(challenges.map((c) => c.difficulty || "Beginner")))];
+
   const filteredChallenges = challenges
     .filter((c) => {
       if (activeTab === "feed") return false;
@@ -268,9 +280,39 @@ export function CommunityChallenges() {
       if (activeTab === "featured") return c.id === featuredChallenge?.id;
       return true;
     })
+    .filter((c) => {
+      const matchesSearch =
+        !search ||
+        c.title.toLowerCase().includes(search.toLowerCase()) ||
+        (c.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (c.category ?? "").toLowerCase().includes(search.toLowerCase());
+      const matchesCategory =
+        categoryFilter === "All Categories" || (c.category ?? "General") === categoryFilter;
+      const matchesDifficulty =
+        difficultyFilter === "All Levels" || (c.difficulty ?? "Beginner") === difficultyFilter;
+      return matchesSearch && matchesCategory && matchesDifficulty;
+    })
     .sort((a, b) => {
-      if (a.id === featuredChallenge?.id) return -1;
-      if (b.id === featuredChallenge?.id) return 1;
+      // Always pin featured to the top in All/Joined lists.
+      if ((activeTab === "all" || activeTab === "joined") && a.id === featuredChallenge?.id) return -1;
+      if ((activeTab === "all" || activeTab === "joined") && b.id === featuredChallenge?.id) return 1;
+
+      if (sortBy === "ending_soon") {
+        return getDaysRemaining(a.deadline) - getDaysRemaining(b.deadline);
+      }
+      if (sortBy === "most_participants") {
+        return (b.participant_count ?? 0) - (a.participant_count ?? 0);
+      }
+      if (sortBy === "most_points") {
+        return (b.points_reward ?? 0) - (a.points_reward ?? 0);
+      }
+      // trending: prioritize featured score if present, then participants, then ending soon.
+      const aScore = a.id === featuredChallenge?.id ? featuredChallenge?.activity_score ?? 0 : 0;
+      const bScore = b.id === featuredChallenge?.id ? featuredChallenge?.activity_score ?? 0 : 0;
+      const scoreDiff = bScore - aScore;
+      if (scoreDiff !== 0) return scoreDiff;
+      const participantDiff = (b.participant_count ?? 0) - (a.participant_count ?? 0);
+      if (participantDiff !== 0) return participantDiff;
       return getDaysRemaining(a.deadline) - getDaysRemaining(b.deadline);
     });
 
@@ -298,6 +340,23 @@ export function CommunityChallenges() {
   }
 
   const pointsToNext = getPointsToNextRank();
+
+  const activeFilterChips: string[] = [
+    search ? `Search: ${search}` : "",
+    categoryFilter !== "All Categories" ? categoryFilter : "",
+    difficultyFilter !== "All Levels" ? difficultyFilter : "",
+    sortBy !== "trending" ? `Sort: ${sortBy.replace("_", " ")}` : "",
+  ].filter(Boolean);
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setCategoryFilter("All Categories");
+    setDifficultyFilter("All Levels");
+    setSortBy("trending");
+  };
+
+  const weeklyGoal = Math.max(500, Math.ceil((communityStats.totalActions + 1) / 500) * 500);
+  const weeklyProgress = Math.min(1, communityStats.totalActions / weeklyGoal);
 
   return (
     <div className="min-h-screen bg-[#F9FDFB]">
@@ -394,6 +453,34 @@ export function CommunityChallenges() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main challenges */}
           <div className="lg:col-span-2">
+            {/* Weekly community goal */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_6px_20px_rgba(15,61,46,0.08)] p-5 mb-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Community goal (this week)</p>
+                  <p className="font-[Manrope] font-bold text-[#0F3D2E] text-lg mt-1">
+                    Reach {weeklyGoal.toLocaleString()} impact actions together
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Small actions compound into real community resilience.
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-[#0F3D2E]">{communityStats.totalActions.toLocaleString()}</p>
+                  <p className="text-xs text-gray-400">actions so far</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full bg-[#2F8F6B]" style={{ width: `${Math.round(weeklyProgress * 100)}%` }} />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+                  <span>Progress</span>
+                  <span>{Math.round(weeklyProgress * 100)}%</span>
+                </div>
+              </div>
+            </div>
+
             {/* Tab filter */}
             <div className="flex gap-1 bg-white rounded-xl border border-gray-100 shadow-sm p-1 mb-6 w-fit">
               {(["all", "featured", "joined", "feed"] as const).map(tab => (
@@ -408,6 +495,78 @@ export function CommunityChallenges() {
                 </button>
               ))}
             </div>
+
+            {/* Search / filters / sort (hidden on feed) */}
+            {activeTab !== "feed" && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_6px_20px_rgba(15,61,46,0.08)] p-4 mb-6">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search challenges, categories, keywords..."
+                      className="w-full min-h-10 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 focus:border-[#2F8F6B]"
+                    />
+                  </div>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="min-h-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
+                    aria-label="Category filter"
+                  >
+                    {categories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={difficultyFilter}
+                    onChange={(e) => setDifficultyFilter(e.target.value)}
+                    className="min-h-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
+                    aria-label="Difficulty filter"
+                  >
+                    {difficulties.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={sortBy}
+                    onChange={(e) =>
+                      setSortBy(e.target.value as "trending" | "ending_soon" | "most_participants" | "most_points")
+                    }
+                    className="min-h-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
+                    aria-label="Sort challenges"
+                  >
+                    <option value="trending">Trending</option>
+                    <option value="ending_soon">Ending soon</option>
+                    <option value="most_participants">Most participants</option>
+                    <option value="most_points">Most points</option>
+                  </select>
+                </div>
+
+                {activeFilterChips.length > 0 && (
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    {activeFilterChips.map((chip) => (
+                      <span
+                        key={chip}
+                        className="text-xs font-medium px-3 py-1 rounded-full bg-[#E6F4EE] text-[#0F3D2E]"
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                    <button
+                      onClick={clearAllFilters}
+                      className="text-xs font-semibold text-[#2F8F6B] hover:text-[#0F3D2E] underline"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {activeTab === "feed" ? (
               // Feed view - narrower centered column
@@ -453,6 +612,22 @@ export function CommunityChallenges() {
                     ? "The top challenge is calculated based on activity. Check back soon!"
                     : "Check back soon for new challenges."}
                 </p>
+                <div className="flex flex-wrap justify-center gap-2 mt-5">
+                  {activeTab !== "featured" && (
+                    <button
+                      onClick={clearAllFilters}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-[#E6F4EE] text-[#0F3D2E] hover:bg-[#d9efe4] transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setActiveTab("all")}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-colors"
+                  >
+                    Browse challenges
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-5">
@@ -467,7 +642,7 @@ export function CommunityChallenges() {
                   return (
                     <div
                       key={challenge.id}
-                      className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
+                      className={`bg-white rounded-2xl border shadow-[0_6px_20px_rgba(15,61,46,0.08)] overflow-hidden transition-all duration-200 hover:shadow-[0_14px_28px_rgba(15,61,46,0.12)] ${
                         challengeIsFeatured ? "border-[#2F8F6B]/30" : "border-gray-100"
                       }`}
                     >
@@ -492,9 +667,15 @@ export function CommunityChallenges() {
                             src={challenge.banner_url || "https://images.unsplash.com/photo-1759503407810-f0402fd9f237?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600"}
                             alt={challenge.title}
                             className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                           />
                           {daysLeft <= 7 && (
-                            <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <div
+                              className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                daysLeft <= 3 ? "bg-red-500" : "bg-amber-500"
+                              }`}
+                            >
                               <Clock className="w-3 h-3" />
                               {daysLeft}d left
                             </div>
@@ -508,8 +689,16 @@ export function CommunityChallenges() {
                                   {challenge.category || "General"}
                                 </span>
                                 <span className="text-xs text-gray-400">{challenge.difficulty}</span>
+                                {activeTab === "joined" && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200">
+                                    {isCompleted ? "Completed" : daysLeft === 0 ? "Expired" : "Active"}
+                                  </span>
+                                )}
                               </div>
                               <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-lg">{challenge.title}</h3>
+                              {challengeIsFeatured && !challenge.is_pinned && (
+                                <p className="text-xs text-gray-500 mt-1">Why featured: highest community activity this week.</p>
+                              )}
                             </div>
                             <div className="text-right flex-shrink-0">
                               <div className="text-sm font-bold text-[#2F8F6B] flex items-center gap-1">
@@ -574,7 +763,15 @@ export function CommunityChallenges() {
                                 )}
                               </button>
                             )}
-                            <button className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:border-[#2F8F6B]/50 transition-colors">
+                            <button
+                              onClick={() => setSelectedChallenge(challenge)}
+                              className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:border-[#2F8F6B]/50 transition-colors"
+                              aria-label="View details"
+                              title="View details"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                            <button className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:border-[#2F8F6B]/50 transition-colors" title="Share">
                               <Share2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -594,7 +791,12 @@ export function CommunityChallenges() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Trophy className="w-5 h-5 text-amber-500" />
-                <h3 className="font-[Manrope] font-bold text-[#0F3D2E]">Global Leaderboard</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-[Manrope] font-bold text-[#0F3D2E]">Global Leaderboard</h3>
+                  <p className="text-xs text-gray-400">
+                    {lastUpdatedAt ? `Updated ${lastUpdatedAt.toLocaleTimeString()}` : "Updated recently"} · Points earned by completing challenges
+                  </p>
+                </div>
               </div>
               {leaderboard.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-4">No leaderboard data yet</p>
@@ -622,6 +824,8 @@ export function CommunityChallenges() {
                             src={entry.avatar_url}
                             alt={entry.name}
                             className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
@@ -721,6 +925,152 @@ export function CommunityChallenges() {
           </div>
         </div>
       </div>
+
+      {/* Challenge details drawer */}
+      {selectedChallenge && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setSelectedChallenge(null)}
+            role="button"
+            aria-label="Close challenge details"
+          />
+          <div className="absolute right-0 top-0 h-full w-full sm:w-[460px] bg-white shadow-2xl border-l border-gray-100 overflow-y-auto">
+            <div className="p-5 border-b border-gray-100">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Challenge details</p>
+                  <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mt-1 truncate">
+                    {selectedChallenge.title}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {(selectedChallenge.category ?? "General")} · {(selectedChallenge.difficulty ?? "Beginner")}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedChallenge(null)}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:border-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-5">
+              <div className="rounded-2xl overflow-hidden border border-gray-100">
+                <img
+                  src={
+                    selectedChallenge.banner_url ||
+                    "https://images.unsplash.com/photo-1759503407810-f0402fd9f237?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=900"
+                  }
+                  alt={selectedChallenge.title}
+                  className="w-full h-44 object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-700 leading-relaxed">{selectedChallenge.description}</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-[#F9FDFB] border border-gray-100 rounded-2xl p-3">
+                  <p className="text-xs text-gray-400">Participants</p>
+                  <p className="text-sm font-bold text-[#0F3D2E] mt-0.5">
+                    {selectedChallenge.participant_count.toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-[#F9FDFB] border border-gray-100 rounded-2xl p-3">
+                  <p className="text-xs text-gray-400">Time left</p>
+                  <p className="text-sm font-bold text-[#0F3D2E] mt-0.5">
+                    {getDaysRemaining(selectedChallenge.deadline)}d
+                  </p>
+                </div>
+                <div className="bg-[#F9FDFB] border border-gray-100 rounded-2xl p-3">
+                  <p className="text-xs text-gray-400">Reward</p>
+                  <p className="text-sm font-bold text-[#2F8F6B] mt-0.5">+{selectedChallenge.points_reward} pts</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-100 rounded-2xl p-4">
+                <p className="text-sm font-semibold text-[#0F3D2E]">How to complete</p>
+                <ul className="mt-2 space-y-2 text-sm text-gray-600">
+                  <li className="flex gap-2">
+                    <span className="text-[#2F8F6B] font-bold">1.</span>
+                    Do the action in real life (safely, locally, and respectfully).
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-[#2F8F6B] font-bold">2.</span>
+                    Upload a proof photo and optional reflection.
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-[#2F8F6B] font-bold">3.</span>
+                    Earn points and show up on the community feed + leaderboard.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex gap-2">
+                {(() => {
+                  const status = getChallengeStatus(selectedChallenge.id);
+                  const isJoined = status !== "not-joined";
+                  const isCompleted = status === "completed";
+
+                  if (isCompleted) {
+                    return (
+                      <div className="flex-1 py-2 rounded-xl text-sm font-semibold bg-emerald-100 text-emerald-700 flex items-center justify-center gap-1.5">
+                        <CheckCircle className="w-4 h-4" /> Completed
+                      </div>
+                    );
+                  }
+
+                  if (isJoined) {
+                    return (
+                      <>
+                        <button
+                          onClick={() => handleOpenSubmissionModal(selectedChallenge)}
+                          disabled={!user}
+                          className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#f5a623] text-[#1a3a2a] hover:bg-[#d4891f] transition-colors disabled:opacity-50"
+                        >
+                          <span className="flex items-center justify-center gap-1.5">
+                            <Camera className="w-4 h-4" /> Complete Challenge
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => handleJoin(selectedChallenge.id)}
+                          disabled={!user || joiningId === selectedChallenge.id}
+                          className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition-colors text-sm"
+                        >
+                          {joiningId === selectedChallenge.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Leave"}
+                        </button>
+                      </>
+                    );
+                  }
+
+                  return (
+                    <button
+                      onClick={() => handleJoin(selectedChallenge.id)}
+                      disabled={!user || joiningId === selectedChallenge.id}
+                      className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-colors disabled:opacity-50"
+                    >
+                      {joiningId === selectedChallenge.id ? (
+                        <span className="flex items-center justify-center gap-1.5">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-1.5">
+                          <Plus className="w-4 h-4" /> Join Challenge
+                        </span>
+                      )}
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,9 +9,10 @@ import {
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
-import { Loader2, Upload, Camera, CheckCircle, X, Image } from "lucide-react";
+import { Loader2, Upload, Camera, CheckCircle, X, AlertTriangle, XCircle } from "lucide-react";
 import { uploadProofPhoto, submitChallengeCompletion } from "../utils/challengeService";
 import type { Challenge } from "../types/database";
+import type { ModerationResult } from "../utils/moderationService";
 
 interface SubmissionModalProps {
   open: boolean;
@@ -30,6 +31,8 @@ export function SubmissionModal({
 }: SubmissionModalProps) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [moderating, setModerating] = useState(false);
+  const [moderationResult, setModerationResult] = useState<ModerationResult | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [reflection, setReflection] = useState("");
@@ -82,6 +85,7 @@ export function SubmissionModal({
 
     setLoading(true);
     setError(null);
+    setModerationResult(null);
 
     try {
       // Upload photo to storage
@@ -89,29 +93,37 @@ export function SubmissionModal({
       const photoUrl = await uploadProofPhoto(photoFile, userId, challenge.id);
       setUploading(false);
 
-      // Submit the completion
-      await submitChallengeCompletion(
+      // Run moderation + submit
+      setModerating(true);
+      const { moderation } = await submitChallengeCompletion(
         challenge.id,
         userId,
         photoUrl,
         reflection || undefined,
-        impactSummary || undefined
+        impactSummary || undefined,
+        challenge.title,
+        challenge.category,
       );
+      setModerating(false);
+      setModerationResult(moderation);
 
-      // Reset form
-      setPhotoFile(null);
-      setPhotoPreview(null);
-      setReflection("");
-      setImpactSummary("");
-      
-      onSuccess();
-      onOpenChange(false);
+      // Only close and call onSuccess if approved
+      if (moderation.status === 'approved') {
+        setPhotoFile(null);
+        setPhotoPreview(null);
+        setReflection('');
+        setImpactSummary('');
+        onSuccess();
+        onOpenChange(false);
+      }
+      // For flagged/rejected, stay open so user can see the outcome
     } catch (err) {
       console.error("Submission error:", err);
       setError("Failed to submit. Please try again.");
     } finally {
       setLoading(false);
       setUploading(false);
+      setModerating(false);
     }
   };
 
@@ -122,6 +134,7 @@ export function SubmissionModal({
       setReflection("");
       setImpactSummary("");
       setError(null);
+      setModerationResult(null);
       onOpenChange(false);
     }
   };
@@ -229,6 +242,39 @@ export function SubmissionModal({
             </p>
           </div>
 
+          {/* Moderation Outcome Banner */}
+          {moderationResult && (
+            <div className={`p-4 rounded-lg border text-sm flex items-start gap-3 ${
+              moderationResult.status === 'approved'
+                ? 'bg-green-50 border-green-200 text-green-800'
+                : moderationResult.status === 'flagged'
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              {moderationResult.status === 'approved' && <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-green-600" />}
+              {moderationResult.status === 'flagged'  && <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600" />}
+              {moderationResult.status === 'rejected' && <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />}
+              <div>
+                <p className="font-semibold">
+                  {moderationResult.status === 'approved' && '✅ Post Approved'}
+                  {moderationResult.status === 'flagged'  && '⚠️ Sent for Review'}
+                  {moderationResult.status === 'rejected' && '❌ Post Rejected'}
+                </p>
+                <p className="mt-0.5 text-xs opacity-90">{moderationResult.reason}</p>
+                {moderationResult.status === 'flagged' && (
+                  <p className="mt-1 text-xs opacity-75">
+                    Your post is under admin review. It will appear in the feed once approved.
+                  </p>
+                )}
+                {moderationResult.status === 'rejected' && (
+                  <p className="mt-1 text-xs opacity-75">
+                    Please edit your reflection or impact summary and try again.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Error Message */}
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
@@ -245,25 +291,33 @@ export function SubmissionModal({
               disabled={loading}
               className="border-gray-300 text-gray-700 hover:bg-gray-100"
             >
-              Cancel
+              {moderationResult && moderationResult.status !== 'approved' ? 'Close' : 'Cancel'}
             </Button>
-            <Button
-              type="submit"
-              disabled={loading || !photoFile}
-              className="bg-[#0F3D2E] text-white hover:bg-[#2F8F6B]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {uploading ? "Uploading..." : "Submitting..."}
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Submit Completion
-                </>
-              )}
-            </Button>
+            {/* Hide submit if already approved */}
+            {(!moderationResult || moderationResult.status !== 'approved') && (
+              <Button
+                type="submit"
+                disabled={loading || !photoFile}
+                className="bg-[#0F3D2E] text-white hover:bg-[#2F8F6B]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {uploading ? "Uploading..." : moderating ? "Reviewing..." : "Submitting..."}
+                  </>
+                ) : moderationResult?.status === 'rejected' ? (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Resubmit
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Submit Completion
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>

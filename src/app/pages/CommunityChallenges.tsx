@@ -33,6 +33,7 @@ import {
   leaveChallenge,
   createChallenge,
   subscribeToChallenges,
+  subscribeToLeaderboard,
   unsubscribeFromChannel,
   fetchCommunityFeed,
   fetchUserLikedSubmissions,
@@ -104,6 +105,7 @@ export function CommunityChallenges() {
 
   // UI state
   const [loading, setLoading] = useState(true);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "joined" | "featured" | "feed">("all");
   const [search, setSearch] = useState("");
@@ -187,6 +189,38 @@ export function CommunityChallenges() {
       setLoading(false);
     }
   }, [user?.id, fetchUserProfile]);
+
+  // Dedicated leaderboard refresh (used by subscription + interval)
+  const fetchLeaderboardData = useCallback(async () => {
+    setLeaderboardLoading(true);
+    try {
+      const [leaderboardData, rankData] = await Promise.all([
+        fetchLeaderboard(10),
+        userProfileId ? fetchUserRank(userProfileId) : Promise.resolve(null),
+      ]);
+      setLeaderboard(leaderboardData);
+      if (rankData !== null) setUserRank(rankData);
+    } catch (err) {
+      console.error('Error refreshing leaderboard:', err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [userProfileId]);
+
+  // Real-time leaderboard subscription + hourly fallback interval
+  useEffect(() => {
+    const leaderboardChannel = subscribeToLeaderboard(() => {
+      fetchLeaderboardData();
+    });
+
+    // Refresh every 60 minutes as a fallback for clients that miss realtime events
+    const interval = setInterval(fetchLeaderboardData, 60 * 60 * 1000);
+
+    return () => {
+      unsubscribeFromChannel(leaderboardChannel);
+      clearInterval(interval);
+    };
+  }, [fetchLeaderboardData]);
 
   // Initial data fetch
   useEffect(() => {

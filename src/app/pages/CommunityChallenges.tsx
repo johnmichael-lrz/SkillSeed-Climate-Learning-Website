@@ -532,7 +532,7 @@ export function CommunityChallenges() {
                     activeTab === tab ? "bg-[#0F3D2E] text-white" : "text-gray-600 hover:bg-[#E6F4EE]"
                   }`}
                 >
-                  {tab === "all" ? "All Challenges" : tab === "featured" ? "🔥 Top Challenge" : tab === "feed" ? `📸 Feed (${feedItems.length})` : `Joined (${joinedChallengeIds.size})`}
+                  {tab === "all" ? "All Challenges" : tab === "featured" ? "Top Challenge" : tab === "feed" ? `Feed (${feedItems.length})` : `Joined (${joinedChallengeIds.size})`}
                 </button>
               ))}
             </div>
@@ -769,7 +769,7 @@ export function CommunityChallenges() {
                           <div className="flex items-center gap-2">
                             <Flame className="w-3.5 h-3.5 text-amber-300" />
                             <span className="text-white text-xs font-bold">
-                              {challenge.is_pinned ? "📌 PINNED BY ADMIN" : "🔥 FEATURED CHALLENGE"}
+                              {challenge.is_pinned ? "Pinned by admin" : "Featured challenge"}
                             </span>
                           </div>
                           {!challenge.is_pinned && featuredChallenge && (
@@ -935,7 +935,7 @@ export function CommunityChallenges() {
                             rank === 1 ? "text-amber-500" : rank === 2 ? "text-gray-400" : rank === 3 ? "text-amber-700" : "text-gray-400"
                           }`}
                         >
-                          {rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : rank}
+                          {rank}
                         </div>
                         {entry.avatar_url ? (
                           <img

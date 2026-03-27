@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type {
   Challenge,
+  FeaturedChallenge,
   ChallengeParticipant,
   ChallengeParticipantWithChallenge,
   LeaderboardEntry,
@@ -334,10 +335,16 @@ export async function fetchCommunityStats(): Promise<{
 // ============================================================================
 
 /**
- * Fetch the algorithmically computed featured challenge
- * Based on activity_score = (participant_count * 2) + (action_count * 1.5) + recency_bonus
+ * Fetch the featured challenge using a multi-factor scoring algorithm.
+ *
+ * Scoring factors (all computed in the featured_challenge DB view):
+ *   - Participant count  → participant_count * 3
+ *   - Time sensitivity   → +80 if deadline ≤ 7 days, +40 if ≤ 14 days
+ *   - Recency boost      → +60 if created within 3 days, +30 within 7 days
+ *   - Points value       → floor(points_reward / 10)
+ *   - Admin pin override → is_pinned=true challenges always rank first
  */
-export async function fetchFeaturedChallenge(): Promise<(Challenge & { activity_score: number }) | null> {
+export async function fetchFeaturedChallenge(): Promise<FeaturedChallenge | null> {
   const { data, error } = await supabase
     .from('featured_challenge')
     .select('*')
@@ -351,7 +358,7 @@ export async function fetchFeaturedChallenge(): Promise<(Challenge & { activity_
     return null;
   }
 
-  return data;
+  return data as FeaturedChallenge;
 }
 
 /**

@@ -24,7 +24,6 @@ import { useAuth } from "../hooks/useAuth";
 import { getProjectById, applyToProject, getConnectionsForProject, updateConnectionStatus, deleteProject } from "../utils/matchService";
 import { supabase } from "../utils/supabase";
 import type { ConnectionStatus, Project, ConnectionWithDetails } from "../types/database";
-main
 
 const missionsData: Record<string, any> = {
   "urban-garden": {

@@ -50,67 +50,69 @@ function getCategoryStyle(focusArea: string[] | undefined): { color: string; ico
   return { color: 'bg-lime-100 text-lime-700', icon: <Recycle className="w-4 h-4" /> };
 }
 
-// Get a placeholder image based on focus area - community building mission style
-function getProjectImage(focusArea: string[] | undefined): string {
-  const area = focusArea?.[0]?.toLowerCase() || '';
-  
-  // Energy / Solar / Renewable - workers installing solar panels
-  if (area.includes('solar') || area.includes('energy') || area.includes('renewable')) {
-    return 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&fit=crop';
+// Pick a mission image using mission keywords first, then focus area.
+function getProjectImage(mission: Pick<Project, "title" | "description" | "focus_area">): string {
+  const keywordText = `${mission.title || ""} ${mission.description || ""} ${(mission.focus_area || []).join(" ")}`
+    .toLowerCase();
+
+  const imageRules: Array<{ keywords: string[]; url: string }> = [
+    {
+      keywords: ["flood", "relief", "evacuation", "disaster", "emergency"],
+      url: "https://images.unsplash.com/photo-1593113598332-cd288d649433?w=800&fit=crop",
+    },
+    {
+      keywords: ["typhoon", "storm", "coastal", "response"],
+      url: "https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=800&fit=crop",
+    },
+    {
+      keywords: ["reforestation", "forest", "tree", "mangrove", "planting"],
+      url: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&fit=crop",
+    },
+    {
+      keywords: ["compost", "waste", "recycling", "circular", "repair"],
+      url: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&fit=crop",
+    },
+    {
+      keywords: ["solar", "energy", "renewable", "microgrid", "electric"],
+      url: "https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&fit=crop",
+    },
+    {
+      keywords: ["water", "marine", "ocean", "river", "clean water"],
+      url: "https://images.unsplash.com/photo-1484291470158-b8f8d608850d?w=800&fit=crop",
+    },
+    {
+      keywords: ["urban", "city", "infrastructure", "corridor", "mapping"],
+      url: "https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=800&fit=crop",
+    },
+    {
+      keywords: ["education", "school", "literacy", "training", "youth"],
+      url: "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=800&fit=crop",
+    },
+    {
+      keywords: ["research", "science", "data", "policy", "analysis"],
+      url: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=800&fit=crop",
+    },
+    {
+      keywords: ["community", "volunteer", "grassroots", "organizing"],
+      url: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&fit=crop",
+    },
+    {
+      keywords: ["agriculture", "farming", "food", "rice", "soil"],
+      url: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&fit=crop",
+    },
+    {
+      keywords: ["media", "storytelling", "video", "documentary", "content"],
+      url: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800&fit=crop",
+    },
+  ];
+
+  for (const rule of imageRules) {
+    if (rule.keywords.some((keyword) => keywordText.includes(keyword))) {
+      return rule.url;
+    }
   }
-  
-  // Forest / Conservation / Reforestation - volunteers planting trees
-  if (area.includes('forest') || area.includes('conservation') || area.includes('reforestation')) {
-    return 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=600&fit=crop';
-  }
-  
-  // Education / Technology - classroom/workshop setting
-  if (area.includes('education') || area.includes('technology') || area.includes('literacy')) {
-    return 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=600&fit=crop';
-  }
-  
-  // Water / Ocean - ocean conservation / beach cleanup
-  if (area.includes('water') || area.includes('ocean') || area.includes('marine')) {
-    return 'https://images.unsplash.com/photo-1484291470158-b8f8d608850d?w=600&fit=crop';
-  }
-  
-  // Urban / Infrastructure / City - sustainable city / green buildings
-  if (area.includes('urban') || area.includes('infrastructure') || area.includes('city')) {
-    return 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=600&fit=crop';
-  }
-  
-  // Climate Science / Research - scientists in lab/field
-  if (area.includes('climate science') || area.includes('research') || area.includes('data')) {
-    return 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=600&fit=crop';
-  }
-  
-  // Policy / Finance / Advocacy - meeting / conference
-  if (area.includes('policy') || area.includes('finance') || area.includes('advocacy')) {
-    return 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600&fit=crop';
-  }
-  
-  // Community / Grassroots - community gathering
-  if (area.includes('community') || area.includes('grassroots') || area.includes('volunteer')) {
-    return 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&fit=crop';
-  }
-  
-  // Disaster Response / Emergency - relief workers helping
-  if (area.includes('disaster') || area.includes('emergency') || area.includes('relief')) {
-    return 'https://images.unsplash.com/photo-1593113598332-cd288d649433?w=600&fit=crop';
-  }
-  
-  // Agriculture / Food - sustainable farming
-  if (area.includes('agriculture') || area.includes('food') || area.includes('farming')) {
-    return 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&fit=crop';
-  }
-  
-  // Storytelling / Media / Documentary - filming / content creation
-  if (area.includes('storytelling') || area.includes('media') || area.includes('documentary')) {
-    return 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=600&fit=crop';
-  }
-  
-  // Default - diverse team collaboration on climate
-  return 'https://images.unsplash.com/photo-1552799446-159ba9523315?w=600&fit=crop';
+
+  return "https://images.unsplash.com/photo-1552799446-159ba9523315?w=800&fit=crop";
 }
 
 const categories = ["All", "climate science", "renewable energy", "education", "urban planning", "climate finance", "technology", "advocacy"];
@@ -636,7 +638,7 @@ export function MissionDashboard() {
                       {/* Image — fixed shorter height */}
                       <div className="relative h-40 overflow-hidden">
                         <img 
-                          src={getProjectImage(mission.focus_area)} 
+                          src={getProjectImage(mission)} 
                           alt={mission.title} 
                           className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
                         />
@@ -792,7 +794,7 @@ export function MissionDashboard() {
                       key={mission.id}
                       className="bg-white rounded-2xl border border-gray-100 shadow-[0_6px_20px_rgba(15,61,46,0.08)] hover:shadow-[0_14px_28px_rgba(15,61,46,0.12)] transition-all duration-200 flex overflow-hidden group"
                     >
-                      <img src={getProjectImage(mission.focus_area)} alt={mission.title} className="w-36 h-full object-cover group-hover:scale-105 transition-transform duration-300 flex-shrink-0" />
+                      <img src={getProjectImage(mission)} alt={mission.title} className="w-36 h-full object-cover group-hover:scale-105 transition-transform duration-300 flex-shrink-0" />
                       <div className="p-4 flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">

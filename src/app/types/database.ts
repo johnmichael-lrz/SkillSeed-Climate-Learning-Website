@@ -131,8 +131,16 @@ export interface Challenge {
   banner_url: string | null;
   status: ChallengeStatus;
   deadline: string | null;
+  /** Admin override: when true, this challenge is always shown as Featured. */
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** Featured challenge — includes the computed scoring breakdown. */
+export interface FeaturedChallenge extends Challenge {
+  /** Multi-factor score: participant engagement + time sensitivity + recency + points value. */
+  activity_score: number;
 }
 
 export interface ChallengeParticipant {

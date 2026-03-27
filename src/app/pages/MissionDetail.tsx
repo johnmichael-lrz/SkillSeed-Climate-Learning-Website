@@ -21,7 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { getProjectById, applyToProject, getConnectionsForProject, updateConnectionStatus, deleteProject } from "../utils/matchService";
+import { getProjectById, applyToProject, getConnectionsForProject, updateConnectionStatus, deleteProject, getProjects } from "../utils/matchService";
 import type { Project, ConnectionWithDetails } from "../types/database";
 
 const missionsData: Record<string, any> = {
@@ -159,26 +159,7 @@ This mission is open to all skill levels. Whether you're a forestry professional
   },
 };
 
-const relatedMissions = [
-  {
-    id: "composting",
-    title: "Neighborhood Composting Hub",
-    category: "Composting",
-    duration: "3 weeks",
-    points: 120,
-    image: "https://images.unsplash.com/photo-1763897710760-2d47e1fa69ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400",
-    color: "bg-lime-100 text-lime-700",
-  },
-  {
-    id: "urban-garden",
-    title: "Urban Rooftop Garden",
-    category: "Urban Farming",
-    duration: "4 weeks",
-    points: 150,
-    image: "https://images.unsplash.com/photo-1763897710760-2d47e1fa69ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400",
-    color: "bg-emerald-100 text-emerald-700",
-  },
-];
+
 
 export function MissionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -201,6 +182,8 @@ export function MissionDetail() {
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [relatedProjects, setRelatedProjects] = useState<Project[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   // Ownership check using useAuth user.id directly
   const isOwner = user && dbProject && String(dbProject.poster_id) === String(user.id);
@@ -219,6 +202,26 @@ export function MissionDetail() {
       if (isUUID) {
         const project = await getProjectById(id);
         setDbProject(project);
+
+        // Fetch related projects based on focus_area and skills_needed
+        if (project) {
+          setRelatedLoading(true);
+          try {
+            const candidates = await getProjects({
+              focus_area: project.focus_area?.length ? project.focus_area : undefined,
+              status: 'open',
+            });
+            // Exclude the current project, limit to 3
+            const filtered = candidates
+              .filter((p) => p.id !== project.id)
+              .slice(0, 3);
+            setRelatedProjects(filtered);
+          } catch (err) {
+            console.error('Error fetching related projects:', err);
+          } finally {
+            setRelatedLoading(false);
+          }
+        }
       }
       
       setLoading(false);
@@ -784,31 +787,44 @@ export function MissionDetail() {
             {/* Related missions */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <h3 className="font-[Manrope] font-bold text-[#0F3D2E] mb-3">Related Missions</h3>
-              <div className="space-y-3">
-                {relatedMissions.map((m) => (
-                  <Link
-                    key={m.id}
-                    to={`/missions/${m.id}`}
-                    className="flex items-center gap-3 group"
-                  >
-                    <img src={m.image} alt={m.title} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-[#0F3D2E] group-hover:text-[#2F8F6B] truncate transition-colors">
-                        {m.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${m.color}`}>
-                          {m.category}
-                        </span>
-                        <span className="text-xs text-gray-400 flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                          +{m.points}
-                        </span>
+
+              {relatedLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#2F8F6B]" />
+                </div>
+              ) : relatedProjects.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-3">No related missions found.</p>
+              ) : (
+                <div className="space-y-3">
+                  {relatedProjects.map((m) => (
+                    <Link
+                      key={m.id}
+                      to={`/missions/${m.id}`}
+                      className="flex items-center gap-3 group"
+                    >
+                      <div className="w-12 h-12 rounded-lg bg-[#E6F4EE] flex items-center justify-center flex-shrink-0">
+                        <Leaf className="w-5 h-5 text-[#2F8F6B]" />
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#0F3D2E] group-hover:text-[#2F8F6B] truncate transition-colors">
+                          {m.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {m.focus_area?.[0] && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                              {m.focus_area[0]}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400 flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            +{m.points}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

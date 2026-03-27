@@ -42,7 +42,7 @@ import {
 import { CreateChallengeModal } from "../components/CreateChallengeModal";
 import { SubmissionModal } from "../components/SubmissionModal";
 import { FeedCard } from "../components/FeedCard";
-import type { Challenge, LeaderboardEntry, CreateChallengeInput, FeedItem } from "../types/database";
+import type { Challenge, FeaturedChallenge, LeaderboardEntry, CreateChallengeInput, FeedItem } from "../types/database";
 
 // Category color mapping
 const CATEGORY_COLORS: Record<string, string> = {
@@ -95,7 +95,7 @@ export function CommunityChallenges() {
   });
   const [userRank, setUserRank] = useState<number | null>(null);
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
-  const [featuredChallengeId, setFeaturedChallengeId] = useState<string | null>(null);
+  const [featuredChallenge, setFeaturedChallenge] = useState<FeaturedChallenge | null>(null);
   
   // Feed state
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
@@ -135,7 +135,7 @@ export function CommunityChallenges() {
       setChallenges(challengesData);
       setCommunityStats(statsData);
       setLeaderboard(leaderboardData);
-      setFeaturedChallengeId(featuredData?.id || null);
+      setFeaturedChallenge(featuredData);
       setFeedItems(feedData);
 
       // If user is logged in, fetch their data
@@ -263,22 +263,19 @@ export function CommunityChallenges() {
   // Filter and sort challenges - algorithmically computed featured challenge appears first
   const filteredChallenges = challenges
     .filter((c) => {
-      if (activeTab === "feed") return false; // Feed tab shows submissions, not challenges
+      if (activeTab === "feed") return false;
       if (activeTab === "joined") return joinedChallengeIds.has(c.id);
-      // "Featured" tab shows only the algorithmically computed featured challenge
-      if (activeTab === "featured") return c.id === featuredChallengeId;
+      if (activeTab === "featured") return c.id === featuredChallenge?.id;
       return true;
     })
     .sort((a, b) => {
-      // Featured challenge (computed by activity score) comes first
-      if (a.id === featuredChallengeId) return -1;
-      if (b.id === featuredChallengeId) return 1;
-      // Then sort by deadline (urgent first)
+      if (a.id === featuredChallenge?.id) return -1;
+      if (b.id === featuredChallenge?.id) return 1;
       return getDaysRemaining(a.deadline) - getDaysRemaining(b.deadline);
     });
 
   // Check if a challenge is the featured one
-  const isFeatured = (challengeId: string) => challengeId === featuredChallengeId;
+  const isFeatured = (challengeId: string) => challengeId === featuredChallenge?.id;
 
   // Calculate points to next rank
   const getPointsToNextRank = () => {
@@ -475,9 +472,18 @@ export function CommunityChallenges() {
                       }`}
                     >
                       {challengeIsFeatured && (
-                        <div className="bg-gradient-to-r from-[#2F8F6B] to-[#0F3D2E] px-4 py-1.5 flex items-center gap-2">
-                          <Flame className="w-3.5 h-3.5 text-amber-300" />
-                          <span className="text-white text-xs font-bold">FEATURED CHALLENGE</span>
+                        <div className="bg-gradient-to-r from-[#2F8F6B] to-[#0F3D2E] px-4 py-1.5 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Flame className="w-3.5 h-3.5 text-amber-300" />
+                            <span className="text-white text-xs font-bold">
+                              {challenge.is_pinned ? "📌 PINNED BY ADMIN" : "🔥 FEATURED CHALLENGE"}
+                            </span>
+                          </div>
+                          {!challenge.is_pinned && featuredChallenge && (
+                            <span className="text-[#A8D5BF] text-[10px] font-medium">
+                              Score: {featuredChallenge.activity_score}
+                            </span>
+                          )}
                         </div>
                       )}
                       <div className="flex flex-col sm:flex-row">

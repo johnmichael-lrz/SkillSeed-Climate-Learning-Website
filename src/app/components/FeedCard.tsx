@@ -34,10 +34,11 @@ interface FeedCardProps {
   item: FeedItem;
   isLiked: boolean;
   userId: string | null;
+  onOpenChallenge?: (challengeId: string) => void;
   onLikeUpdate?: (submissionId: string, newCount: number, isLiked: boolean) => void;
 }
 
-export function FeedCard({ item, isLiked, userId, onLikeUpdate }: FeedCardProps) {
+export function FeedCard({ item, isLiked, userId, onOpenChallenge, onLikeUpdate }: FeedCardProps) {
   const [likeCount, setLikeCount] = useState(item.like_count);
   const [liked, setLiked] = useState(isLiked);
   const [liking, setLiking] = useState(false);
@@ -111,10 +112,23 @@ export function FeedCard({ item, isLiked, userId, onLikeUpdate }: FeedCardProps)
       {/* Completion badge row */}
       <div className="px-4 pb-3 flex items-center gap-2 flex-wrap">
         <span className="text-[#A8D5BF] text-xs">Completed</span>
-        <span className="bg-[#2d5a3d] text-white text-xs px-2 py-0.5 rounded-full">
+        <button
+          type="button"
+          onClick={() => onOpenChallenge?.(item.challenge_id)}
+          className="bg-[#2d5a3d] text-white text-xs px-2 py-0.5 rounded-full hover:bg-[#356b49] transition-colors"
+          title="Open challenge details"
+        >
           {item.challenge_title}
-        </span>
+        </button>
         <span className="text-[#f5a623] text-xs font-bold">+{item.challenge_points} pts</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide bg-[#244735] text-[#A8D5BF] px-2 py-0.5 rounded-full">
+          Proof submitted
+        </span>
+        {item.user_location && (
+          <span className="text-[10px] font-medium bg-[#22412f] text-[#CDEDDD] px-2 py-0.5 rounded-full">
+            {item.user_location}
+          </span>
+        )}
       </div>
 
       {/* Photo — fixed height, not full bleed */}

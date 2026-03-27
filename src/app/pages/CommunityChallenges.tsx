@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Trophy,
   Users,
@@ -108,6 +108,9 @@ export function CommunityChallenges() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("All Categories");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("All Levels");
+  const [joinedOnly, setJoinedOnly] = useState(false);
+  const [minPoints, setMinPoints] = useState<number>(0);
+  const [timeLeftFilter, setTimeLeftFilter] = useState<"any" | "7" | "3">("any");
   const [sortBy, setSortBy] = useState<"trending" | "ending_soon" | "most_participants" | "most_points">(
     "trending"
   );
@@ -116,6 +119,12 @@ export function CommunityChallenges() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
   const [selectedChallengeForSubmission, setSelectedChallengeForSubmission] = useState<Challenge | null>(null);
+
+  const challengeById = useMemo(() => {
+    const map = new Map<string, Challenge>();
+    challenges.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [challenges]);
 
   // Fetch user's profile ID
   const fetchUserProfile = useCallback(async () => {
@@ -290,7 +299,14 @@ export function CommunityChallenges() {
         categoryFilter === "All Categories" || (c.category ?? "General") === categoryFilter;
       const matchesDifficulty =
         difficultyFilter === "All Levels" || (c.difficulty ?? "Beginner") === difficultyFilter;
-      return matchesSearch && matchesCategory && matchesDifficulty;
+      const matchesJoinedOnly = !joinedOnly || joinedChallengeIds.has(c.id);
+      const matchesPoints = (c.points_reward ?? 0) >= minPoints;
+      const daysLeft = getDaysRemaining(c.deadline);
+      const matchesTimeLeft =
+        timeLeftFilter === "any" ||
+        (timeLeftFilter === "7" && daysLeft <= 7) ||
+        (timeLeftFilter === "3" && daysLeft <= 3);
+      return matchesSearch && matchesCategory && matchesDifficulty && matchesJoinedOnly && matchesPoints && matchesTimeLeft;
     })
     .sort((a, b) => {
       // Always pin featured to the top in All/Joined lists.
@@ -330,10 +346,28 @@ export function CommunityChallenges() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F9FDFB] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[#2F8F6B]" />
-          <p className="text-gray-500">Loading challenges...</p>
+      <div className="min-h-screen bg-[#F9FDFB]">
+        <div className="bg-gradient-to-br from-[#0F3D2E] to-[#1A5C43] py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="h-8 w-72 bg-white/20 rounded animate-pulse mb-3" />
+            <div className="h-5 w-96 bg-white/10 rounded animate-pulse" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-24 bg-white/10 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-44 bg-white rounded-2xl border border-gray-100 animate-pulse" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            <div className="h-64 bg-white rounded-2xl border border-gray-100 animate-pulse" />
+            <div className="h-40 bg-white rounded-2xl border border-gray-100 animate-pulse" />
+          </div>
         </div>
       </div>
     );
@@ -345,6 +379,9 @@ export function CommunityChallenges() {
     search ? `Search: ${search}` : "",
     categoryFilter !== "All Categories" ? categoryFilter : "",
     difficultyFilter !== "All Levels" ? difficultyFilter : "",
+    joinedOnly ? "Joined only" : "",
+    minPoints > 0 ? `Min points: ${minPoints}` : "",
+    timeLeftFilter !== "any" ? `${timeLeftFilter}d left` : "",
     sortBy !== "trending" ? `Sort: ${sortBy.replace("_", " ")}` : "",
   ].filter(Boolean);
 
@@ -352,11 +389,15 @@ export function CommunityChallenges() {
     setSearch("");
     setCategoryFilter("All Categories");
     setDifficultyFilter("All Levels");
+    setJoinedOnly(false);
+    setMinPoints(0);
+    setTimeLeftFilter("any");
     setSortBy("trending");
   };
 
   const weeklyGoal = Math.max(500, Math.ceil((communityStats.totalActions + 1) / 500) * 500);
   const weeklyProgress = Math.min(1, communityStats.totalActions / weeklyGoal);
+  const featured = featuredChallenge ?? null;
 
   return (
     <div className="min-h-screen bg-[#F9FDFB]">
@@ -546,6 +587,39 @@ export function CommunityChallenges() {
                     <option value="most_points">Most points</option>
                   </select>
                 </div>
+                <div className="flex flex-wrap items-center gap-3 mt-3">
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={joinedOnly}
+                      onChange={(e) => setJoinedOnly(e.target.checked)}
+                      className="rounded border-gray-300 text-[#2F8F6B] focus:ring-[#2F8F6B]"
+                    />
+                    Joined only
+                  </label>
+                  <select
+                    value={String(minPoints)}
+                    onChange={(e) => setMinPoints(Number(e.target.value))}
+                    className="min-h-10 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
+                    aria-label="Minimum points"
+                  >
+                    <option value="0">Any points</option>
+                    <option value="25">25+ points</option>
+                    <option value="50">50+ points</option>
+                    <option value="75">75+ points</option>
+                    <option value="100">100+ points</option>
+                  </select>
+                  <select
+                    value={timeLeftFilter}
+                    onChange={(e) => setTimeLeftFilter(e.target.value as "any" | "7" | "3")}
+                    className="min-h-10 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
+                    aria-label="Time left filter"
+                  >
+                    <option value="any">Any deadline</option>
+                    <option value="7">Ending in 7 days</option>
+                    <option value="3">Ending in 3 days</option>
+                  </select>
+                </div>
 
                 {activeFilterChips.length > 0 && (
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -565,6 +639,46 @@ export function CommunityChallenges() {
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab !== "feed" && featured && (
+              <div className="bg-white rounded-2xl border border-[#2F8F6B]/30 shadow-[0_6px_20px_rgba(15,61,46,0.08)] overflow-hidden mb-6">
+                <div className="bg-gradient-to-r from-[#2F8F6B] to-[#0F3D2E] px-4 py-2 flex items-center justify-between">
+                  <span className="text-white text-xs font-bold uppercase tracking-wide">Featured this week</span>
+                  <span className="text-[#D4F3E6] text-[11px]">Most completions + urgency score</span>
+                </div>
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl">{featured.title}</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Why featured: highest community activity this week with strong momentum.
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-[#2F8F6B]">+{featured.points_reward} pts</span>
+                  </div>
+                  <div className="flex flex-wrap gap-3 mt-4 text-xs text-gray-500">
+                    <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {featured.participant_count.toLocaleString()} joined</span>
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {getDaysRemaining(featured.deadline)} days left</span>
+                    <span className="inline-flex items-center gap-1"><Flame className="w-3.5 h-3.5 text-amber-500" /> score {featured.activity_score}</span>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => handleJoin(featured.id)}
+                      disabled={!user || joiningId === featured.id}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-colors disabled:opacity-50"
+                    >
+                      {joiningId === featured.id ? "Joining..." : joinedChallengeIds.has(featured.id) ? "Joined" : "Join in 1 tap"}
+                    </button>
+                    <button
+                      onClick={() => setSelectedChallenge(featured)}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:border-[#2F8F6B]/50"
+                    >
+                      View details
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -592,6 +706,10 @@ export function CommunityChallenges() {
                       item={item}
                       isLiked={likedSubmissionIds.has(item.id)}
                       userId={userProfileId}
+                      onOpenChallenge={(challengeId) => {
+                        const challenge = challengeById.get(challengeId);
+                        if (challenge) setSelectedChallenge(challenge);
+                      }}
                       onLikeUpdate={handleLikeUpdate}
                     />
                   ))}
@@ -731,7 +849,7 @@ export function CommunityChallenges() {
                                   className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#f5a623] text-[#1a3a2a] hover:bg-[#d4891f] transition-colors disabled:opacity-50"
                                 >
                                   <span className="flex items-center justify-center gap-1.5">
-                                    <Camera className="w-4 h-4" /> Complete Challenge
+                                    <Camera className="w-4 h-4" /> Continue
                                   </span>
                                 </button>
                                 <button
@@ -1034,7 +1152,7 @@ export function CommunityChallenges() {
                           className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#f5a623] text-[#1a3a2a] hover:bg-[#d4891f] transition-colors disabled:opacity-50"
                         >
                           <span className="flex items-center justify-center gap-1.5">
-                            <Camera className="w-4 h-4" /> Complete Challenge
+                            <Camera className="w-4 h-4" /> Continue
                           </span>
                         </button>
                         <button

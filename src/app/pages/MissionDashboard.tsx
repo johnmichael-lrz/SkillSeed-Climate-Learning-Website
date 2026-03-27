@@ -22,8 +22,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { getProjects, getMyProjects, deleteProject } from "../utils/matchService";
-import type { Project } from "../types/database";
+import { getProjects, getMyProjects, deleteProject, getMatchingProjects } from "../utils/matchService";
+import { supabase } from "../utils/supabase";
+import type { ConnectionStatus, Project } from "../types/database";
 
 // Helper function to get category color based on focus area
 function getCategoryStyle(focusArea: string[] | undefined): { color: string; icon: React.ReactNode } {
@@ -115,6 +116,11 @@ function getProjectImage(focusArea: string[] | undefined): string {
 const categories = ["All", "climate science", "renewable energy", "education", "urban planning", "climate finance", "technology", "advocacy"];
 const regions = ["All Regions", "Philippines", "Global", "Southeast Asia", "North America", "Africa", "Caribbean"];
 
+type MissionCard = Project & {
+  matched_skills?: string[];
+  match_score?: number;
+};
+
 export function MissionDashboard() {
   const { user } = useAuth();
   const [workTab, setWorkTab] = useState<"volunteers" | "professionals" | "my_projects">("volunteers");
@@ -126,8 +132,24 @@ export function MissionDashboard() {
   const [showPostModal, setShowPostModal] = useState(false);
   
   // Real data from Supabase
-  const [missions, setMissions] = useState<Project[]>([]);
+  const [missions, setMissions] = useState<MissionCard[]>([]);
   const [myProjects, setMyProjects] = useState<Project[]>([]);
+  const [joinedCounts, setJoinedCounts] = useState<
+    Record<
+      string,
+      {
+        volunteers_joined: number;
+        professionals_joined: number;
+        pending_applicants: number;
+      }
+    >
+  >({});
+  const [applicationStatusByProject, setApplicationStatusByProject] = useState<
+    Record<string, ConnectionStatus>
+  >({});
+  const [posterVerifiedByUserId, setPosterVerifiedByUserId] = useState<
+    Record<string, { verified: boolean; name?: string | null; avatar_url?: string | null }>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -136,12 +158,91 @@ export function MissionDashboard() {
     async function fetchData() {
       try {
         setLoading(true);
-        const [allProjects, userProjects] = await Promise.all([
-          getProjects(),
+        // Responder view uses matching results when logged in; poster view always uses "my projects".
+        const [missionsData, userProjects] = await Promise.all([
+          user ? getMatchingProjects() : getProjects(),
           getMyProjects(),
         ]);
-        setMissions(allProjects);
+
+        setMissions(missionsData);
         setMyProjects(userProjects);
+
+        // Derived UI data (joined/needed counts + application state + poster verification)
+        const allProjectIds = Array.from(
+          new Set([...(missionsData ?? []).map((p) => p.id), ...(userProjects ?? []).map((p) => p.id)])
+        );
+
+        if (allProjectIds.length > 0) {
+          const { data: joinedRows, error: joinedError } = await supabase.rpc(
+            "get_joined_counts_for_projects",
+            { project_ids: allProjectIds }
+          );
+
+          if (!joinedError && Array.isArray(joinedRows)) {
+            const joinedMap: typeof joinedCounts = {};
+            for (const row of joinedRows) {
+              joinedMap[String(row.project_id)] = {
+                volunteers_joined: Number(row.volunteers_joined ?? 0),
+                professionals_joined: Number(row.professionals_joined ?? 0),
+                pending_applicants: Number(row.pending_applicants ?? 0),
+              };
+            }
+            setJoinedCounts(joinedMap);
+          } else {
+            console.warn("Joined counts RPC failed (non-fatal):", joinedError);
+          }
+        }
+
+        // Poster verification: show "Verified Organisation" on mission cards
+        const posterUserIds = Array.from(new Set(missionsData.map((p) => String(p.poster_id))));
+        if (posterUserIds.length > 0) {
+          const { data: posters, error: posterError } = await supabase
+            .from("profiles")
+            .select("user_id, verified, name, avatar_url")
+            .in("user_id", posterUserIds);
+
+          if (!posterError && Array.isArray(posters)) {
+            const verifiedMap: typeof posterVerifiedByUserId = {};
+            for (const row of posters) {
+              verifiedMap[String(row.user_id)] = {
+                verified: Boolean(row.verified),
+                name: row.name ?? null,
+                avatar_url: row.avatar_url ?? null,
+              };
+            }
+            setPosterVerifiedByUserId(verifiedMap);
+          } else {
+            console.warn("Poster verification query failed (non-fatal):", posterError);
+          }
+        }
+
+        // Responder application state: used to make CTA state-aware
+        if (user) {
+          const projectIdsForStatus = Array.from(
+            new Set([
+              ...(missionsData ?? []).map((p) => p.id),
+              ...(userProjects ?? []).map((p) => p.id),
+            ])
+          );
+
+          const { data: myConnections, error: connError } = await supabase
+            .from("connections")
+            .select("project_id, status")
+            .eq("responder_id", user.id)
+            .in("project_id", projectIdsForStatus);
+
+          if (!connError && Array.isArray(myConnections)) {
+            const statusMap: typeof applicationStatusByProject = {};
+            for (const row of myConnections) {
+              statusMap[String(row.project_id)] = row.status as ConnectionStatus;
+            }
+            setApplicationStatusByProject(statusMap);
+          } else {
+            console.warn("My connections query failed (non-fatal):", connError);
+          }
+        } else {
+          setApplicationStatusByProject({});
+        }
       } catch (err) {
         setError("Failed to load projects");
         console.error(err);
@@ -181,12 +282,16 @@ export function MissionDashboard() {
   // Sort by urgency first, then by region priority, then by start_date
   const sorted = [
     ...urgent.sort((a, b) => {
+      const scoreDiff = (b.match_score ?? 0) - (a.match_score ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
       const regionDiff = regionPriority(a.region) - regionPriority(b.region);
       if (regionDiff !== 0) return regionDiff;
       if (a.start_date && b.start_date) return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
       return 0;
     }),
     ...regular.sort((a, b) => {
+      const scoreDiff = (b.match_score ?? 0) - (a.match_score ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
       const regionDiff = regionPriority(a.region) - regionPriority(b.region);
       if (regionDiff !== 0) return regionDiff;
       return 0;
@@ -385,6 +490,11 @@ export function MissionDashboard() {
                 {sorted.map((mission) => {
                   const style = getCategoryStyle(mission.focus_area);
                   const isOwner = user && String(mission.poster_id) === String(user.id);
+                  const posterInfo = posterVerifiedByUserId[String(mission.poster_id)];
+                  const joined = joinedCounts[mission.id];
+                  const appStatus = applicationStatusByProject[mission.id];
+                  const pendingCount = joined?.pending_applicants ?? 0;
+                  const matchSkills = mission.matched_skills && mission.matched_skills.length > 0 ? mission.matched_skills : (mission.skills_needed ?? []);
                   return (
                     <div
                       key={mission.id}
@@ -412,11 +522,24 @@ export function MissionDashboard() {
 
                       {/* Card body — flex column to push button to bottom */}
                       <div className="p-4 flex flex-col flex-1">
-                        {/* Org name */}
-                        <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
-                          {mission.region || "Independent"}
-                          <span className="text-green-500">✓</span>
+                        {/* Org name + verification */}
+                        <p className="text-xs text-gray-400 mb-1 flex items-center gap-2">
+                          <span className="truncate">{posterInfo?.name || mission.region || "Organisation"}</span>
+                          {posterInfo?.verified ? (
+                            <span className="text-green-500 flex items-center gap-1">✓ Verified</span>
+                          ) : (
+                            <span className="text-gray-300">Community</span>
+                          )}
                         </p>
+
+                        {/* Match score / why */}
+                        {typeof mission.match_score === "number" && (
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-semibold px-3 py-1 rounded-full">
+                              Match: {mission.match_score}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Title */}
                         <h3 className="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2">
@@ -435,18 +558,18 @@ export function MissionDashboard() {
                           </span>
                         </div>
 
-                        {/* People needed */}
+                        {/* Joined vs needed (pending + accepted) */}
                         <div className="flex items-center gap-2 flex-wrap mb-3">
                           {(mission.volunteers_needed ?? 0) > 0 && (
                             <span className="bg-green-50 text-green-700 text-xs px-2 py-1 rounded-full flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              {mission.volunteers_needed} volunteers
+                              {(joined?.volunteers_joined ?? 0)}/{mission.volunteers_needed} volunteers
                             </span>
                           )}
                           {(mission.professionals_needed ?? 0) > 0 && (
                             <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full flex items-center gap-1">
                               <Briefcase className="w-3 h-3" />
-                              {mission.professionals_needed} professionals
+                              {(joined?.professionals_joined ?? 0)}/{mission.professionals_needed} professionals
                             </span>
                           )}
                         </div>
@@ -468,16 +591,16 @@ export function MissionDashboard() {
                           </div>
                         )}
 
-                        {/* Skills needed — max 3 shown */}
+                        {/* Match skills — max 3 shown */}
                         <div className="flex flex-wrap gap-1 mb-4">
-                          {mission.skills_needed?.slice(0, 3).map(skill => (
+                          {matchSkills.slice(0, 3).map((skill) => (
                             <span key={skill} className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
                               {skill}
                             </span>
                           ))}
-                          {(mission.skills_needed?.length ?? 0) > 3 && (
+                          {matchSkills.length > 3 && (
                             <span className="text-gray-400 text-xs px-1">
-                              +{(mission.skills_needed?.length ?? 0) - 3} more
+                              +{matchSkills.length - 3} more
                             </span>
                           )}
                         </div>
@@ -494,7 +617,17 @@ export function MissionDashboard() {
                               : "bg-[#1a3a2a] text-white hover:bg-green-900"
                           }`}
                         >
-                          {isOwner ? "View Your Project" : "View & Apply"}
+                          {isOwner
+                            ? pendingCount > 0
+                              ? `Review Applications (${pendingCount})`
+                              : "View Your Project"
+                            : appStatus === "pending"
+                            ? "Application Pending"
+                            : appStatus === "accepted"
+                            ? "Connected — View"
+                            : appStatus === "declined"
+                            ? "Declined — View"
+                            : "View & Apply"}
                           <ChevronRight className="w-3.5 h-3.5" />
                         </Link>
                       </div>
@@ -507,6 +640,14 @@ export function MissionDashboard() {
                 {sorted.map((mission) => {
                   const style = getCategoryStyle(mission.focus_area);
                   const isOwner = user && String(mission.poster_id) === String(user.id);
+                  const posterInfo = posterVerifiedByUserId[String(mission.poster_id)];
+                  const joined = joinedCounts[mission.id];
+                  const appStatus = applicationStatusByProject[mission.id];
+                  const pendingCount = joined?.pending_applicants ?? 0;
+                  const matchSkills =
+                    mission.matched_skills && mission.matched_skills.length > 0
+                      ? mission.matched_skills
+                      : mission.skills_needed ?? [];
                   return (
                     <div
                       key={mission.id}
@@ -524,8 +665,21 @@ export function MissionDashboard() {
                                   URGENT
                                 </span>
                               )}
+                              {typeof mission.match_score === "number" && (
+                                <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                                  Match: {mission.match_score}
+                                </span>
+                              )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">{mission.region || "Global"} · {mission.location || "Remote"}</p>
+                            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                              <span>{posterInfo?.name || mission.region || "Organisation"}</span>
+                              <span>· {mission.location || "Remote"}</span>
+                              {posterInfo?.verified && (
+                                <span className="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-100 rounded-full px-2 py-0.5 text-[11px]">
+                                  ✓ Verified
+                                </span>
+                              )}
+                            </p>
                           </div>
                           <span className="bg-black/70 text-white text-xs px-2.5 py-1 rounded-full flex-shrink-0">
                             {mission.focus_area?.[0] || "Project"}
@@ -537,12 +691,14 @@ export function MissionDashboard() {
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{mission.duration || "Flexible"}</span>
                             {(mission.volunteers_needed ?? 0) > 0 && (
                               <span className="flex items-center gap-1 text-green-700">
-                                <Users className="w-3 h-3" />{mission.volunteers_needed} volunteers
+                                <Users className="w-3 h-3" />
+                                {(joined?.volunteers_joined ?? 0)}/{mission.volunteers_needed} volunteers
                               </span>
                             )}
                             {(mission.professionals_needed ?? 0) > 0 && (
                               <span className="flex items-center gap-1 text-blue-700">
-                                <Briefcase className="w-3 h-3" />{mission.professionals_needed} professionals
+                                <Briefcase className="w-3 h-3" />
+                                {(joined?.professionals_joined ?? 0)}/{mission.professionals_needed} professionals
                               </span>
                             )}
                             {/* Compensation badge - Professionals tab only */}
@@ -569,7 +725,18 @@ export function MissionDashboard() {
                                 : "bg-[#1a3a2a] text-white hover:bg-green-900"
                             }`}
                           >
-                            {isOwner ? "View Your Project" : "View & Apply"} <ChevronRight className="w-3.5 h-3.5" />
+                            {isOwner
+                              ? pendingCount > 0
+                                ? `Review Applications (${pendingCount})`
+                                : "View Your Project"
+                              : appStatus === "pending"
+                              ? "Application Pending"
+                              : appStatus === "accepted"
+                              ? "Connected — View"
+                              : appStatus === "declined"
+                              ? "Declined — View"
+                              : "View & Apply"}{" "}
+                            <ChevronRight className="w-3.5 h-3.5" />
                           </Link>
                         </div>
                       </div>
@@ -584,6 +751,7 @@ export function MissionDashboard() {
         {workTab === "my_projects" && (
           <MyProjectsView 
             projects={myProjects} 
+            joinedCounts={joinedCounts}
             onDelete={(projectId) => setMyProjects(prev => prev.filter(p => p.id !== projectId))}
           />
         )}
@@ -592,7 +760,22 @@ export function MissionDashboard() {
   );
 }
 
-function MyProjectsView({ projects, onDelete }: { projects: Project[]; onDelete: (id: string) => void }) {
+function MyProjectsView({
+  projects,
+  joinedCounts,
+  onDelete,
+}: {
+  projects: Project[];
+  joinedCounts: Record<
+    string,
+    {
+      volunteers_joined: number;
+      professionals_joined: number;
+      pending_applicants: number;
+    }
+  >;
+  onDelete: (id: string) => void;
+}) {
   const activeProjects = projects.filter(p => p.status === 'open' && p.type !== 'urgent');
   const urgentProjects = projects.filter(p => p.type === 'urgent');
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -669,21 +852,32 @@ function MyProjectsView({ projects, onDelete }: { projects: Project[]; onDelete:
                 <p className="text-xs text-gray-500 mb-3">{project.location || 'No location'} · {project.duration || 'Flexible'}</p>
                 <div className="flex gap-6">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Volunteers needed</p>
-                    <span className="text-sm font-semibold text-[#0F3D2E]">{project.volunteers_needed ?? 0}</span>
+                    <p className="text-xs text-gray-500 mb-1">Volunteers</p>
+                    <span className="text-sm font-semibold text-[#0F3D2E]">
+                      {(joinedCounts[project.id]?.volunteers_joined ?? 0)}/{project.volunteers_needed ?? 0}
+                    </span>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Professionals needed</p>
-                    <span className="text-sm font-semibold text-[#0F3D2E]">{project.professionals_needed ?? 0}</span>
+                    <p className="text-xs text-gray-500 mb-1">Professionals</p>
+                    <span className="text-sm font-semibold text-[#0F3D2E]">
+                      {(joinedCounts[project.id]?.professionals_joined ?? 0)}/{project.professionals_needed ?? 0}
+                    </span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
+                {((joinedCounts[project.id]?.pending_applicants ?? 0) > 0) && (
+                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                    {joinedCounts[project.id]?.pending_applicants ?? 0} pending applications
+                  </span>
+                )}
                 <Link 
                   to={`/missions/${project.id}`}
                   className="text-sm font-semibold text-[#2F8F6B] border border-[#2F8F6B]/30 px-3 py-1.5 rounded-lg hover:bg-[#E6F4EE] transition-colors"
                 >
-                  View
+                  {(joinedCounts[project.id]?.pending_applicants ?? 0) > 0
+                    ? `Review Applications (${joinedCounts[project.id]?.pending_applicants ?? 0})`
+                    : "View"}
                 </Link>
                 <Link 
                   to={`/post-project?edit=${project.id}`}

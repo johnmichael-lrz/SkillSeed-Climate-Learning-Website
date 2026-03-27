@@ -22,7 +22,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { getProjectById, applyToProject, getConnectionsForProject, updateConnectionStatus, deleteProject } from "../utils/matchService";
-import type { Project, ConnectionWithDetails } from "../types/database";
+import { supabase } from "../utils/supabase";
+import type { ConnectionStatus, Project, ConnectionWithDetails } from "../types/database";
 
 const missionsData: Record<string, any> = {
   "urban-garden": {
@@ -192,6 +193,7 @@ export function MissionDetail() {
   const [motivation, setMotivation] = useState("");
   const [availability, setAvailability] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [myApplicationStatus, setMyApplicationStatus] = useState<ConnectionStatus | null>(null);
   const [saved, setSaved] = useState(false);
   const [dbProject, setDbProject] = useState<Project | null>(null);
   const [applicants, setApplicants] = useState<ConnectionWithDetails[]>([]);
@@ -226,6 +228,37 @@ export function MissionDetail() {
 
     fetchData();
   }, [id]);
+
+  // Fetch the current user's application status for this project (responder view).
+  useEffect(() => {
+    async function fetchMyApplicationStatus() {
+      if (!dbProject?.id || !user) {
+        setMyApplicationStatus(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("connections")
+        .select("status")
+        .eq("project_id", dbProject.id)
+        .eq("responder_id", user.id)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          setMyApplicationStatus(null);
+          return;
+        }
+        console.warn("Failed to fetch my application status:", error);
+        setMyApplicationStatus(null);
+        return;
+      }
+
+      setMyApplicationStatus((data?.status ?? null) as ConnectionStatus | null);
+    }
+
+    fetchMyApplicationStatus();
+  }, [dbProject?.id, user]);
 
   // Fetch applicants when owner clicks "View Applicants"
   const fetchApplicants = async () => {
@@ -340,6 +373,14 @@ export function MissionDetail() {
       return;
     }
 
+    // If we already detected an existing application, don't allow duplicate submits.
+    if (myApplicationStatus) {
+      setApplyError(
+        `You already have an application with status: ${myApplicationStatus}.`
+      );
+      return;
+    }
+
     setApplying(true);
 
     try {
@@ -351,6 +392,7 @@ export function MissionDetail() {
 
       if (result.connection) {
         setSubmitted(true);
+        setMyApplicationStatus((result.connection.status ?? "pending") as ConnectionStatus);
       } else {
         setApplyError(result.error || "Failed to submit application.");
       }
@@ -622,6 +664,49 @@ export function MissionDetail() {
                     </div>
                   )}
                 </div>
+              ) : myApplicationStatus ? (
+                <div className="text-center py-8">
+                  <div
+                    className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                      myApplicationStatus === "accepted"
+                        ? "bg-green-50"
+                        : myApplicationStatus === "pending"
+                        ? "bg-amber-50"
+                        : "bg-red-50"
+                    }`}
+                  >
+                    {myApplicationStatus === "accepted" ? (
+                      <CheckCircle className="w-8 h-8 text-green-700" />
+                    ) : myApplicationStatus === "pending" ? (
+                      <AlertTriangle className="w-8 h-8 text-amber-700" />
+                    ) : (
+                      <AlertTriangle className="w-8 h-8 text-red-700" />
+                    )}
+                  </div>
+
+                  <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mb-2">
+                    {myApplicationStatus === "accepted"
+                      ? "Application Accepted"
+                      : myApplicationStatus === "pending"
+                      ? "Application Pending"
+                      : "Application Declined"}
+                  </h3>
+
+                  <p className="text-gray-500 text-sm mb-6">
+                    {myApplicationStatus === "accepted"
+                      ? "You're connected to this mission. Keep an eye on updates from the organization."
+                      : myApplicationStatus === "pending"
+                      ? `${mission.org} will review your application and get back to you within 3 business days.`
+                      : "This application was declined. You may try again later if the organization re-opens review."}
+                  </p>
+
+                  <Link
+                    to="/progress"
+                    className="text-sm font-semibold text-[#2F8F6B] hover:text-[#0F3D2E] flex items-center justify-center gap-1"
+                  >
+                    View in My Progress <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </div>
               ) : submitted ? (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 bg-[#E6F4EE] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -705,7 +790,7 @@ export function MissionDetail() {
 
                   <button
                     type="submit"
-                    disabled={applying}
+                    disabled={applying || !!myApplicationStatus}
                     className="w-full bg-[#0F3D2E] text-white py-3.5 rounded-xl font-semibold hover:bg-[#2F8F6B] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {applying ? (

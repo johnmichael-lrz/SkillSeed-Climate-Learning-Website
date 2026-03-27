@@ -26,11 +26,24 @@ export const runAiScreening = async (
   quest: Quest
 ): Promise<AIScreeningResult | null> => {
   try {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.access_token) {
+      console.warn('AI screening skipped: missing authenticated session token.', sessionError);
+      return null;
+    }
+
     const { data, error } = await supabase.functions.invoke<{
       result: AIScreeningResult | null;
       skipped?: boolean;
       error?: string;
     }>('ai-screen-quest', {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
       body: {
         photoUrl,
         reflection,

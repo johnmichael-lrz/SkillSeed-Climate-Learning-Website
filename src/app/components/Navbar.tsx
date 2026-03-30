@@ -92,9 +92,13 @@ export function Navbar() {
                 ) : (
                   <Link
                     to={link.href}
-                    className="px-3 py-2 rounded-lg text-sm transition-colors duration-150"
+                    className={`px-3 py-2 rounded-lg text-sm transition-colors duration-150 ${
+                      location.pathname === link.href
+                        ? "dark:!bg-emerald-900/40 dark:!text-emerald-50 dark:!font-semibold"
+                        : "dark:!text-emerald-200/95 dark:hover:!bg-white/[0.06] dark:hover:!text-emerald-50"
+                    }`}
                     style={{
-                      color: location.pathname === link.href ? "#0F3D2E" : "#4B5563",
+                      color: location.pathname === link.href ? "#0F3D2E" : "#374151",
                       background: location.pathname === link.href ? "#E6F4EE" : "transparent",
                       fontWeight: location.pathname === link.href ? 600 : 400,
                     }}
@@ -278,7 +282,7 @@ export function Navbar() {
             )}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-2 rounded-lg"
+              className="p-2 rounded-lg dark:!text-emerald-200"
               style={{ color: "#0F3D2E" }}
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -289,7 +293,7 @@ export function Navbar() {
 
       {/* ── Mobile Menu ── */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-1">
+        <div className="md:hidden border-t border-gray-100 dark:border-[#1E3B34] bg-white dark:bg-[#0D1F18] px-4 py-4 space-y-1">
           {navLinks.map((link) => (
             <div key={link.label}>
               {link.comingSoon ? (
@@ -313,7 +317,7 @@ export function Navbar() {
             </div>
           ))}
 
-          <div className="pt-3 flex flex-col gap-2 border-t border-gray-100 mt-2">
+          <div className="pt-3 flex flex-col gap-2 border-t border-gray-100 dark:border-[#1E3B34] mt-2">
             <div className="flex items-center justify-between px-1 pb-1">
               <span className="text-xs text-gray-500">Theme</span>
               <div className="flex items-center gap-1">

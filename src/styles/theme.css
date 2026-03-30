@@ -177,10 +177,13 @@ html:not(.dark) [style*="color:#6B7280"] {
   color: #94c8af;
 }
 
-/* Catch common hardcoded text utility colors used across tabs */
-.dark .text-\[\#0F3D2E\],
-.dark .text-\[\#1a3a2a\] {
-  color: #ffffff !important;
+/* Forest green utilities on *darkened* surfaces only (avoid white-on-pastel when
+   inline backgrounds stay light because React uses rgb() in the style attribute). */
+.dark .bg-white .text-\[\#0F3D2E\],
+.dark .bg-white .text-\[\#1a3a2a\],
+.dark .bg-gray-50 .text-\[\#0F3D2E\],
+.dark .bg-gray-100 .text-\[\#0F3D2E\] {
+  color: #ecfdf5 !important;
 }
 
 .dark .text-\[\#374151\],
@@ -224,6 +227,32 @@ html:not(.dark) [style*="color:#6B7280"] {
 .dark [style*="background: white"],
 .dark [style*="background:white"] {
   background: #132b23 !important;
+}
+
+.dark [style*="background: rgb(255, 255, 255)"],
+.dark [style*="background:rgb(255, 255, 255)"] {
+  background: #132b23 !important;
+}
+
+/* React often emits pastel section backgrounds as rgb(); darken without matching text colors */
+.dark [style*="rgb(240, 253, 246)"],
+.dark [style*="rgb(240,253,246)"] {
+  background-color: #10271f !important;
+}
+
+.dark [style*="rgb(240, 249, 245)"],
+.dark [style*="rgb(240,249,245)"] {
+  background-color: #10271f !important;
+}
+
+.dark [style*="rgb(249, 250, 251)"],
+.dark [style*="rgb(249,250,251)"] {
+  background-color: #10271f !important;
+}
+
+.dark [style*="rgb(240, 247, 255)"],
+.dark [style*="rgb(240,247,255)"] {
+  background-color: #10271f !important;
 }
 
 .dark [style*="border: 1px solid #E5E7EB"],

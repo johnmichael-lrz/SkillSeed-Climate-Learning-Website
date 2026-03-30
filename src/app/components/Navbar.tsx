@@ -58,8 +58,7 @@ export function Navbar() {
 
   return (
     <nav
-      className="sticky top-0 z-50 bg-white dark:bg-[#0D1F18] border-b border-gray-100 dark:border-[#1E3B34]"
-      style={{ boxShadow: "0 1px 12px rgba(15,61,46,0.07)" }}
+      className="sticky top-0 z-50 bg-white/95 dark:bg-[#0D1F18]/95 backdrop-blur-sm border-b border-border dark:border-[#1E3B34] shadow-sm"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -78,30 +77,24 @@ export function Navbar() {
           </Link>
 
           {/* ── Center Nav (desktop) ── */}
-          <div className="hidden md:flex items-center gap-0.5">
+          <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
               <div key={link.label} className="relative">
                 {link.comingSoon ? (
-                  <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-gray-400 cursor-default select-none text-sm">
+                  <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-muted-foreground cursor-default select-none text-sm">
                     {link.label}
-                    <span className="text-xs px-1.5 py-0.5 rounded-full"
-                      style={{ background: "#E6F4EE", color: "#2F8F6B", fontSize: "10px", fontWeight: 600 }}>
+                    <span className="text-xs px-1.5 py-0.5 rounded-md bg-[#E6F4EE] dark:bg-[#1E3B34] text-[#2F8F6B] dark:text-[#6DD4A8] font-semibold">
                       Soon
                     </span>
                   </span>
                 ) : (
                   <Link
                     to={link.href}
-                    className={`px-3 py-2 rounded-lg text-sm transition-colors duration-150 ${
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
                       location.pathname === link.href
-                        ? "dark:!bg-emerald-900/40 dark:!text-emerald-50 dark:!font-semibold"
-                        : "dark:!text-emerald-200/95 dark:hover:!bg-white/[0.06] dark:hover:!text-emerald-50"
+                        ? "bg-[#E6F4EE] dark:bg-[#1E3B34] text-[#0F3D2E] dark:text-[#6DD4A8] font-semibold"
+                        : "text-muted-foreground hover:bg-muted dark:hover:bg-[#17342B] hover:text-foreground"
                     }`}
-                    style={{
-                      color: location.pathname === link.href ? "#0F3D2E" : "#374151",
-                      background: location.pathname === link.href ? "#E6F4EE" : "transparent",
-                      fontWeight: location.pathname === link.href ? 600 : 400,
-                    }}
                   >
                     {link.label}
                   </Link>
@@ -115,12 +108,7 @@ export function Navbar() {
             {mounted && (
               <button
                 onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                className="p-2 rounded-lg border transition-colors"
-                style={{
-                  borderColor: mounted && theme === "dark" ? "#1E3B34" : "#E5E7EB",
-                  background: mounted && theme === "dark" ? "#132B23" : "white",
-                  color: mounted && theme === "dark" ? "#E8F5EF" : "#0F3D2E",
-                }}
+                className="min-h-[40px] min-w-[40px] p-2 rounded-lg border border-border dark:border-[#1E3B34] bg-white dark:bg-[#132B23] text-[#0F3D2E] dark:text-[#BEEBD7] hover:bg-muted dark:hover:bg-[#17342B] transition-colors"
                 title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                 aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
@@ -244,17 +232,13 @@ export function Navbar() {
               <>
                 <button
                   onClick={() => navigate("/auth?tab=login")}
-                  className="px-4 py-2 rounded-lg text-sm transition-colors duration-150"
-                  style={{ color: "#374151", fontWeight: 500 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#F9FAFB")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  className="min-h-[40px] px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted dark:hover:bg-[#17342B] transition-colors"
                 >
                   Log In
                 </button>
                 <button
                   onClick={() => navigate("/auth?tab=signup")}
-                  className="px-4 py-2 rounded-lg text-white text-sm transition-all flex items-center gap-1.5"
-                  style={{ background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)", fontWeight: 600, boxShadow: "0 2px 8px rgba(47,143,107,0.35)" }}
+                  className="min-h-[40px] px-5 py-2 rounded-lg text-white text-sm font-semibold bg-[linear-gradient(135deg,#0F3D2E_0%,#2F8F6B_100%)] shadow-sm shadow-[#2F8F6B]/25 hover:shadow-md hover:shadow-[#2F8F6B]/30 transition-all flex items-center gap-1.5 active:scale-[0.98]"
                 >
                   <Sprout className="w-3.5 h-3.5" />
                   Sign Up

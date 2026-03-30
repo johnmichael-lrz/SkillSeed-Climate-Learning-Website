@@ -108,25 +108,25 @@ Keep responses concise (2-4 sentences max), practical, and encouraging. Focus on
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden sticky top-16 flex flex-col h-[600px]">
+    <div className="bg-white dark:bg-[#132B23] border border-border dark:border-[#1E3B34] rounded-xl overflow-hidden lg:sticky lg:top-20 flex flex-col h-[500px] lg:h-[560px] shadow-sm">
       {/* Header */}
-      <div className="bg-[#1a3a2a] px-4 py-3">
-        <p className="text-white text-sm font-semibold">🌿 Environmental Coach</p>
-        <p className="text-green-300 text-xs">AI-powered · Powered by Groq</p>
+      <div className="bg-[#0F3D2E] px-4 py-3">
+        <p className="text-white text-sm font-bold">Environmental Coach</p>
+        <p className="text-[#6DD4A8] text-xs">AI-powered</p>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-muted/30 dark:bg-[#0D1F18]">
         {messages.map((msg, i) => (
           <div
             key={i}
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
+              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-[#1a3a2a] text-white rounded-br-none'
-                  : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                  ? 'bg-[#0F3D2E] text-white rounded-br-sm'
+                  : 'bg-white dark:bg-[#132B23] text-card-foreground rounded-bl-sm border border-border dark:border-[#1E3B34]'
               }`}
             >
               {msg.content}
@@ -135,15 +135,15 @@ Keep responses concise (2-4 sentences max), practical, and encouraging. Focus on
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-2xl rounded-bl-none px-3 py-2">
-              <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+            <div className="bg-white dark:bg-[#132B23] rounded-xl rounded-bl-sm px-4 py-3 border border-border dark:border-[#1E3B34]">
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 bg-[#2F8F6B] dark:bg-[#6DD4A8] rounded-full animate-bounce" />
                 <div
-                  className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-[#2F8F6B] dark:bg-[#6DD4A8] rounded-full animate-bounce"
                   style={{ animationDelay: '100ms' }}
                 />
                 <div
-                  className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-[#2F8F6B] dark:bg-[#6DD4A8] rounded-full animate-bounce"
                   style={{ animationDelay: '200ms' }}
                 />
               </div>
@@ -154,18 +154,18 @@ Keep responses concise (2-4 sentences max), practical, and encouraging. Focus on
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-gray-100 flex gap-2">
+      <div className="p-3 border-t border-border dark:border-[#1E3B34] flex gap-2 bg-white dark:bg-[#132B23]">
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask your coach..."
-          className="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-200"
+          className="flex-1 text-sm border border-border dark:border-[#1E3B34] bg-input-background dark:bg-[#0D1F18] rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 focus:border-[#2F8F6B]"
         />
         <button
           onClick={sendMessage}
           disabled={!input.trim() || loading}
-          className="bg-[#1a3a2a] text-white text-xs px-3 py-2 rounded-xl hover:bg-green-900 transition disabled:opacity-40"
+          className="min-h-[40px] bg-[#0F3D2E] dark:bg-[#2F8F6B] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#2F8F6B] dark:hover:bg-[#6DD4A8] dark:hover:text-[#0A2E20] transition-colors disabled:opacity-40"
         >
           Send
         </button>

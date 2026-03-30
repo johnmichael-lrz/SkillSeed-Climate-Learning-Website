@@ -175,12 +175,11 @@ export function AuthPage() {
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F8FAF8" }}>
+    <div className="min-h-screen flex bg-[#F9FAFB] dark:bg-[#0D1F18]">
 
       {/* ── Left panel ── */}
       <div
-        className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-10"
-        style={{ background: "linear-gradient(160deg, #0A2E20 0%, #0F3D2E 50%, #2F8F6B 100%)" }}
+        className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-10 bg-[linear-gradient(160deg,#0A2E20_0%,#0F3D2E_50%,#1A5C43_100%)]"
       >
         <Link to="/" className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)" }}>
@@ -722,7 +721,7 @@ export function AuthPage() {
 
 const inputStyle: React.CSSProperties = {
   border: "1.5px solid #E5E7EB",
-  background: "#F9FAFB",
+  background: "white",
   color: "#374151",
 };
 
@@ -736,7 +735,7 @@ const blurStyle = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HT
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs mb-1.5" style={{ fontWeight: 600, color: "#374151" }}>{label}</label>
+      <label className="block text-xs font-semibold text-foreground mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -747,8 +746,11 @@ function TagButton({ label, selected, onToggle }: { label: string; selected: boo
     <button
       type="button"
       onClick={onToggle}
-      className="px-3 py-1.5 rounded-full text-xs transition-all"
-      style={{ background: selected ? "#0F3D2E" : "#F3F4F6", color: selected ? "white" : "#6B7280", fontWeight: 600 }}
+      className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+        selected 
+          ? "bg-[#0F3D2E] text-white" 
+          : "bg-[#F3F4F6] dark:bg-[#1E3B34] text-muted-foreground hover:bg-[#E6F4EE] dark:hover:bg-[#132B23]"
+      }`}
     >
       {selected && "✓ "}{label}
     </button>

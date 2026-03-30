@@ -525,5 +525,3 @@ export function QuestDetail() {
 }
 
 export default QuestDetail;
-
-export default QuestDetail;

@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
-import { Loader2, MapPin, Clock } from "lucide-react";
+import { MapPin, Clock, Award, Trophy, Target, Flame, Edit2 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { getCurrentProfile } from "../utils/matchService";
 import { supabase } from "../utils/supabase";
+import { PageSkeleton } from "../components/ui/loading-skeleton";
+import { EmptyState } from "../components/ui/empty-state";
 import type { Profile } from "../types/database";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -204,24 +206,21 @@ export function ProgressTracker() {
 
   // ── Loading / Auth Guards ───────────────────────────────────────────────────
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-[#2F8F6B]" />
-          <p className="text-gray-500">Loading your profile...</p>
-        </div>
-      </div>
-    );
+    return <PageSkeleton hasHero={true} />;
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-2 text-[#0F3D2E]">Please sign in</h2>
-          <p className="mb-4 text-gray-500">You need to be logged in to view your profile.</p>
-          <Link to="/auth" className="text-[#2F8F6B] font-semibold">Sign in →</Link>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB] dark:bg-[#0D1F18] px-4">
+        <EmptyState
+          icon={Target}
+          title="Sign in to continue"
+          description="You need to be logged in to view your profile and progress."
+          action={{
+            label: "Sign in",
+            onClick: () => navigate('/auth')
+          }}
+        />
       </div>
     );
   }
@@ -231,22 +230,22 @@ export function ProgressTracker() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0D1F18]">
 
       {/* ══════════════════════════════════════════════════════════════════════
-          PROFILE HEADER (dark green banner)
+          PROFILE HEADER
           ══════════════════════════════════════════════════════════════════════ */}
-      <div className="bg-[#1a3a2a] w-full px-8 py-10">
+      <div className="bg-[linear-gradient(135deg,#0F3D2E_0%,#1A5C43_100%)] w-full px-6 md:px-8 py-10 md:py-12">
         <div className="max-w-4xl mx-auto">
 
           {/* Top row — avatar + name + edit button */}
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4">
 
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden">
+              <div className="w-16 h-16 rounded-xl bg-[#2F8F6B] flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden ring-2 ring-white/20">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.name} className="w-full h-full rounded-full object-cover" />
+                  <img src={profile.avatar_url} alt={profile.name || ""} className="w-full h-full object-cover" />
                 ) : (
                   profile?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
                 )}
@@ -254,17 +253,19 @@ export function ProgressTracker() {
 
               {/* Name + org + location */}
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-white text-2xl font-bold">{profile?.name || user?.email}</h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-white text-xl sm:text-2xl font-bold">{profile?.name || user?.email}</h1>
                   {profile?.verified && (
-                    <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">✓ Verified</span>
+                    <span className="bg-[#6DD4A8] text-[#0A2E20] text-xs font-semibold px-2 py-0.5 rounded-lg">Verified</span>
                   )}
                 </div>
                 {profile?.org_name && (
-                  <p className="text-green-300 text-sm">{profile.org_name}</p>
+                  <p className="text-[#BEEBD7] text-sm mt-0.5">{profile.org_name}</p>
                 )}
                 {profile?.location && (
-                  <p className="text-green-400 text-xs mt-0.5">📍 {profile.location}</p>
+                  <p className="text-[#94C8AF] text-xs mt-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {profile.location}
+                  </p>
                 )}
               </div>
             </div>
@@ -272,15 +273,16 @@ export function ProgressTracker() {
             {/* Edit profile button */}
             <button
               onClick={() => navigate("/edit-profile")}
-              className="border border-green-500 text-green-300 text-xs px-4 py-2 rounded-full hover:bg-green-800 transition"
+              className="min-h-[40px] border border-[#6DD4A8]/50 text-[#BEEBD7] text-sm font-medium px-4 py-2 rounded-lg hover:bg-white/10 transition-colors inline-flex items-center gap-2 self-start"
             >
-              ✏️ Edit Profile
+              <Edit2 className="w-4 h-4" />
+              Edit Profile
             </button>
           </div>
 
           {/* Bio */}
           {profile?.bio && (
-            <p className="text-green-100 text-sm leading-relaxed mb-6 max-w-2xl">
+            <p className="text-[#BEEBD7] text-sm leading-relaxed mb-6 max-w-2xl">
               {profile.bio}
             </p>
           )}
@@ -289,7 +291,7 @@ export function ProgressTracker() {
           {profile?.skills && profile.skills.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
               {profile.skills.map(skill => (
-                <span key={skill} className="bg-green-800 text-green-200 text-xs px-3 py-1 rounded-full">
+                <span key={skill} className="bg-white/10 text-[#BEEBD7] text-xs font-medium px-3 py-1.5 rounded-lg">
                   {skill}
                 </span>
               ))}
@@ -297,22 +299,24 @@ export function ProgressTracker() {
           )}
 
           {/* Stats row */}
-          <div className="flex items-center gap-4">
-            <div className="bg-green-800/50 rounded-2xl px-4 py-3 text-center">
-              <p className="text-yellow-400 text-lg font-bold">{totalPoints}</p>
-              <p className="text-green-300 text-xs">Points</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center">
+              <p className="text-[#B7C96A] text-xl font-bold">{totalPoints}</p>
+              <p className="text-[#BEEBD7] text-xs mt-0.5">Points</p>
             </div>
-            <div className="bg-green-800/50 rounded-2xl px-4 py-3 text-center">
-              <p className="text-white text-lg font-bold">🔥 {streak}d</p>
-              <p className="text-green-300 text-xs">Streak</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center">
+              <p className="text-white text-xl font-bold flex items-center justify-center gap-1">
+                <Flame className="w-4 h-4 text-orange-400" /> {streak}d
+              </p>
+              <p className="text-[#BEEBD7] text-xs mt-0.5">Streak</p>
             </div>
-            <div className="bg-green-800/50 rounded-2xl px-4 py-3 text-center">
-              <p className="text-white text-lg font-bold">#{leaderboardRank}</p>
-              <p className="text-green-300 text-xs">Global Rank</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center">
+              <p className="text-white text-xl font-bold">#{leaderboardRank}</p>
+              <p className="text-[#BEEBD7] text-xs mt-0.5">Global Rank</p>
             </div>
-            <div className="bg-green-800/50 rounded-2xl px-4 py-3 text-center">
-              <p className="text-white text-lg font-bold">{completedChallenges}</p>
-              <p className="text-green-300 text-xs">Challenges Done</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center">
+              <p className="text-white text-xl font-bold">{completedChallenges}</p>
+              <p className="text-[#BEEBD7] text-xs mt-0.5">Challenges</p>
             </div>
           </div>
 
@@ -322,31 +326,31 @@ export function ProgressTracker() {
       {/* ══════════════════════════════════════════════════════════════════════
           SECTION 1 — My Missions
           ══════════════════════════════════════════════════════════════════════ */}
-      <div className="max-w-4xl mx-auto px-8 py-10">
-        <h2 className="text-lg font-semibold text-gray-900 mb-5">My Missions</h2>
+      <div className="max-w-4xl mx-auto px-6 md:px-8 py-10">
+        <h2 className="text-lg font-bold text-card-foreground mb-5">My Missions</h2>
 
         {missions.length === 0 ? (
-          <div className="bg-gray-50 rounded-2xl p-8 text-center">
-            <p className="text-gray-400 text-sm">No missions applied to yet.</p>
-            <button
-              onClick={() => navigate("/work")}
-              className="mt-3 text-[#1a3a2a] text-sm font-medium hover:underline"
-            >
-              Browse Missions →
-            </button>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="No missions yet"
+            description="Browse available missions and apply to make an impact."
+            action={{
+              label: "Browse Missions",
+              onClick: () => navigate("/work")
+            }}
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {missions.map(mission => (
               <div
                 key={mission.id}
-                className="bg-white border border-gray-100 rounded-2xl px-5 py-4 flex items-center justify-between hover:shadow-sm transition"
+                className="bg-white dark:bg-[#132B23] border border-border dark:border-[#1E3B34] rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:shadow-sm transition-shadow"
               >
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-card-foreground">
                     {mission.projects?.title || "Untitled Mission"}
                   </p>
-                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1.5">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
                       {mission.projects?.location || "Remote"}
@@ -355,23 +359,23 @@ export function ProgressTracker() {
                       <Clock className="w-3 h-3" />
                       {mission.projects?.duration || "Flexible"}
                     </span>
-                    <span className="capitalize">🎯 {mission.role}</span>
+                    <span className="capitalize">{mission.role}</span>
                   </div>
                 </div>
                 <span
-                  className={`text-xs px-3 py-1 rounded-full font-medium ${
+                  className={`text-xs px-3 py-1.5 rounded-lg font-semibold self-start sm:self-auto ${
                     mission.status === "accepted"
-                      ? "bg-green-100 text-green-700"
+                      ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
                       : mission.status === "declined"
-                      ? "bg-red-100 text-red-500"
-                      : "bg-yellow-50 text-yellow-600"
+                      ? "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300"
+                      : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                   }`}
                 >
                   {mission.status === "accepted"
-                    ? "✓ Accepted"
+                    ? "Accepted"
                     : mission.status === "declined"
-                    ? "✗ Rejected"
-                    : "⏳ Pending"}
+                    ? "Rejected"
+                    : "Pending"}
                 </span>
               </div>
             ))}
@@ -382,44 +386,44 @@ export function ProgressTracker() {
       {/* ══════════════════════════════════════════════════════════════════════
           SECTION 2 — My Challenges
           ══════════════════════════════════════════════════════════════════════ */}
-      <div className="max-w-4xl mx-auto px-8 pb-10">
-        <h2 className="text-lg font-semibold text-gray-900 mb-5">My Challenges</h2>
+      <div className="max-w-4xl mx-auto px-6 md:px-8 pb-10">
+        <h2 className="text-lg font-bold text-card-foreground mb-5">My Challenges</h2>
 
         {challenges.length === 0 ? (
-          <div className="bg-gray-50 rounded-2xl p-8 text-center">
-            <p className="text-gray-400 text-sm">No challenges joined yet.</p>
-            <button
-              onClick={() => navigate("/community")}
-              className="mt-3 text-[#1a3a2a] text-sm font-medium hover:underline"
-            >
-              Browse Challenges →
-            </button>
-          </div>
+          <EmptyState
+            icon={Trophy}
+            title="No challenges joined"
+            description="Join challenges to earn points and compete with other climate champions."
+            action={{
+              label: "Browse Challenges",
+              onClick: () => navigate("/community")
+            }}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {challenges.map(cp => (
               <div
                 key={cp.id}
-                className="bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-sm transition"
+                className="bg-white dark:bg-[#132B23] border border-border dark:border-[#1E3B34] rounded-xl p-4 hover:shadow-sm transition-shadow"
               >
                 <div className="flex items-start justify-between mb-2">
-                  <span className="bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-[#E6F4EE] dark:bg-[#1E3B34] text-[#0F3D2E] dark:text-[#6DD4A8] text-xs font-medium px-2.5 py-1 rounded-lg">
                     {cp.challenges?.category || "General"}
                   </span>
                   <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${
                       cp.status === "completed"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-50 text-yellow-600"
+                        ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                        : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                     }`}
                   >
-                    {cp.status === "completed" ? "✓ Completed" : "⏳ In Progress"}
+                    {cp.status === "completed" ? "Completed" : "In Progress"}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-gray-900 mb-1">
+                <p className="text-sm font-semibold text-card-foreground mb-1.5">
                   {cp.challenges?.title || "Untitled Challenge"}
                 </p>
-                <p className="text-xs text-yellow-500 font-medium">
+                <p className="text-xs text-[#B7C96A] font-semibold">
                   +{cp.points_earned || 0} pts earned
                 </p>
               </div>
@@ -431,27 +435,27 @@ export function ProgressTracker() {
       {/* ══════════════════════════════════════════════════════════════════════
           SECTION 3 — Badges Earned
           ══════════════════════════════════════════════════════════════════════ */}
-      <div className="max-w-4xl mx-auto px-8 pb-16">
-        <h2 className="text-lg font-semibold text-gray-900 mb-5">Badges Earned</h2>
+      <div className="max-w-4xl mx-auto px-6 md:px-8 pb-16">
+        <h2 className="text-lg font-bold text-card-foreground mb-5">Badges Earned</h2>
 
         {badges.length === 0 ? (
-          <div className="bg-gray-50 rounded-2xl p-8 text-center">
-            <p className="text-gray-400 text-sm">
-              Complete challenges and missions to earn badges.
-            </p>
-          </div>
+          <EmptyState
+            icon={Award}
+            title="No badges yet"
+            description="Complete challenges and missions to earn badges and build your profile."
+          />
         ) : (
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
             {badges.map(ub => (
               <div
                 key={ub.id}
-                className="bg-white border border-gray-100 rounded-2xl p-4 text-center w-28 hover:shadow-sm transition"
+                className="bg-white dark:bg-[#132B23] border border-border dark:border-[#1E3B34] rounded-xl p-4 text-center hover:shadow-sm transition-shadow"
               >
                 <div className="text-3xl mb-2">{ub.badges?.icon || "🏅"}</div>
-                <p className="text-xs font-semibold text-gray-800">
+                <p className="text-xs font-semibold text-card-foreground">
                   {ub.badges?.name || "Badge"}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                   {ub.badges?.description || ""}
                 </p>
               </div>

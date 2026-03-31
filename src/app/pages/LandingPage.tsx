@@ -249,40 +249,27 @@ export function LandingPage() {
       icon: Sprout,
       title: "I'm a Learner",
       subtitle: "Beginner-friendly",
-      desc: "Build green skills from scratch and participate in real climate missions — no experience needed.",
+      desc: "Build climate skills from scratch with guided quests. No experience needed.",
       cta: "Start Learning",
-      bg: "#0F3D2E",
-      border: "#1e6b52",
-      iconBg: "rgba(255,255,255,0.15)",
-      iconColor: "white",
-      emphasis: true,
+      featured: false,
     },
     {
       id: "jobready",
       icon: Wrench,
-      title: "I'm Job Ready",
-      subtitle: "Skilled volunteer",
-      desc: "Deploy your existing skills on real climate projects and build a verified impact portfolio.",
-      cta: "Offer My Skills",
-      bg: "#F0F7FF",
-      border: "#BAE0FD",
-      iconBg: "#DBEAFE",
-      iconColor: "#1E6B9A",
-      textColor: "#1E3A5F",
-      emphasis: false,
+      title: "I'm a Volunteer",
+      subtitle: "Recommended",
+      desc: "Deploy your skills on real climate projects. Build a verified impact portfolio.",
+      cta: "Find Projects",
+      featured: true,
     },
     {
       id: "org",
       icon: Building2,
       title: "I'm an Organization",
-      subtitle: "Project coordinator",
-      desc: "Post climate projects and get matched with skilled volunteers and professionals immediately.",
-      cta: "Partner with us",
-      bg: "#F0FDF6",
-      border: "#BBF7D0",
-      iconBg: "#E6F4EE",
-      iconColor: "#2F8F6B",
-      emphasis: false,
+      subtitle: "Post projects",
+      desc: "Get matched with skilled volunteers for your climate initiatives.",
+      cta: "Post a Project",
+      featured: false,
     },
   ];
 
@@ -506,38 +493,49 @@ export function LandingPage() {
             initial="hidden"
             whileInView="show"
             viewport={LANDING_VIEWPORT}>
-            {roles.map(({ id, icon: Icon, title, subtitle, desc, cta, emphasis }) => (
-              <motion.div
+            {roles.map(({ id, icon: Icon, title, subtitle, desc, cta, featured }) => (
+              <motion.button
                 key={id}
+                type="button"
                 variants={staggerCard}
                 whileHover={reduceMotion ? undefined : { y: -3 }}
-                whileTap={reduceMotion ? undefined : { scale: 0.99 }}
-                className={`rounded-xl p-6 flex flex-col cursor-pointer transition-all duration-200 ${
-                  emphasis
-                    ? "bg-[#0F3D2E] text-white"
-                    : "bg-white border border-slate-200 hover:border-slate-300 dark:bg-[#152a24] dark:border-emerald-400/22"
+                whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+                className={`min-h-[200px] rounded-xl p-6 flex flex-col text-left cursor-pointer transition-all duration-200 bg-white dark:bg-[#132B23] border focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2F8F6B] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0D1F18] ${
+                  featured
+                    ? "border-[#2F8F6B] ring-1 ring-[#2F8F6B]/30 shadow-md shadow-[#2F8F6B]/10 dark:border-[#6DD4A8] dark:ring-[#6DD4A8]/20"
+                    : "border-slate-200 hover:border-slate-300 dark:border-[#1E3B34] dark:hover:border-[#2F8F6B]/50"
                 }`}
                 onClick={() => handleRoleClick(id)}>
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${emphasis ? "bg-white/15" : "bg-slate-100 dark:bg-white/10"}`}>
-                  <Icon className={`w-5 h-5 ${emphasis ? "text-white" : "text-slate-700 dark:text-emerald-200"}`} />
+                {/* Icon tile */}
+                <div className={`w-11 h-11 rounded-lg flex items-center justify-center mb-4 ${
+                  featured 
+                    ? "bg-[#0F3D2E] dark:bg-[#2F8F6B]" 
+                    : "bg-slate-100 dark:bg-[#1E3B34]"
+                }`}>
+                  <Icon className={`w-5 h-5 ${featured ? "text-white" : "text-[#0F3D2E] dark:text-[#6DD4A8]"}`} />
                 </div>
-                <span className={`text-xs mb-2 font-medium ${emphasis ? "text-white/70" : "text-slate-500 dark:text-emerald-200/70"}`}>
+                {/* Subtitle pill */}
+                <span className={`inline-flex items-center text-[11px] uppercase tracking-wide font-semibold mb-2 ${
+                  featured 
+                    ? "text-[#2F8F6B] dark:text-[#6DD4A8]" 
+                    : "text-slate-400 dark:text-[#94C8AF]"
+                }`}>
+                  {featured && <span className="w-1.5 h-1.5 rounded-full bg-[#2F8F6B] dark:bg-[#6DD4A8] mr-1.5" />}
                   {subtitle}
                 </span>
-                <h3
-                  className={`mb-2 ${emphasis ? "text-white" : "text-slate-900 dark:text-emerald-50"}`}
-                  style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: "1.05rem" }}>
+                {/* Title */}
+                <h3 className="mb-2 text-slate-900 dark:text-[#BEEBD7]" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: "1.05rem" }}>
                   {title}
                 </h3>
-                <p
-                  className={`text-sm mb-5 flex-1 leading-relaxed ${emphasis ? "text-white/80" : "text-slate-600 dark:text-emerald-200/85"}`}>
+                {/* Description */}
+                <p className="text-sm mb-5 flex-1 leading-relaxed text-slate-600 dark:text-[#94C8AF]">
                   {desc}
                 </p>
-                <span
-                  className={`mt-auto inline-flex items-center gap-1.5 text-sm font-semibold ${emphasis ? "text-white" : "text-[#0F3D2E] dark:text-emerald-100"}`}>
+                {/* CTA */}
+                <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-[#0F3D2E] dark:text-[#6DD4A8] group-hover:gap-2 transition-all">
                   {cta} <ArrowRight className="w-3.5 h-3.5" />
                 </span>
-              </motion.div>
+              </motion.button>
             ))}
           </motion.div>
         </div>

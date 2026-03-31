@@ -307,8 +307,32 @@ export function MissionDashboard() {
     fetchData();
   }, [user]);
 
+  // Validation: Filter out test/placeholder missions
+  function isValidMission(m: Project): boolean {
+    const title = m.title?.trim() ?? "";
+    // Too short
+    if (title.length < 6) return false;
+    // Repeated characters (e.g. "ssssss", "aaaa")
+    if (/^(.)\1{4,}$/.test(title)) return false;
+    // Mostly repeated characters (80%+ same char)
+    const charCounts = new Map<string, number>();
+    for (const c of title.toLowerCase()) {
+      charCounts.set(c, (charCounts.get(c) || 0) + 1);
+    }
+    const maxCount = Math.max(...charCounts.values());
+    if (title.length > 3 && maxCount / title.length > 0.8) return false;
+    // Random gibberish: too many consonants in a row (6+)
+    if (/[bcdfghjklmnpqrstvwxz]{6,}/i.test(title)) return false;
+    // All numbers or special chars
+    if (/^[\d\W_]+$/.test(title)) return false;
+    return true;
+  }
+
   // Filtering logic
   const filtered = missions.filter((m) => {
+    // First check validity
+    if (!isValidMission(m)) return false;
+
     const matchSearch =
       m.title.toLowerCase().includes(search.toLowerCase()) ||
       (m.description?.toLowerCase().includes(search.toLowerCase()) || false) ||
@@ -633,7 +657,7 @@ export function MissionDashboard() {
               </button>
             )}
 
-            {/* ────────────────────────────────────────────────────────────────���────
+            {/* ────────────────────────────────────────────────────────────────�����────
                 Results Count
             ───────────────────────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between">
@@ -648,19 +672,40 @@ export function MissionDashboard() {
             {sorted.length === 0 ? (
               <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-12 text-center">
                 <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-[#1E3B34] flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-6 h-6 text-slate-400 dark:text-[#6B8F7F]" />
+                  {hasActiveFilters ? (
+                    <Search className="w-6 h-6 text-slate-400 dark:text-[#6B8F7F]" />
+                  ) : (
+                    <Briefcase className="w-6 h-6 text-slate-400 dark:text-[#6B8F7F]" />
+                  )}
                 </div>
-                <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">No missions match your filters</h3>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">
+                  {hasActiveFilters ? "No missions match your filters" : "No missions available yet"}
+                </h3>
                 <p className="text-sm text-slate-500 dark:text-[#6B8F7F] mb-4">
-                  Try adjusting your search or clearing some filters.
+                  {hasActiveFilters 
+                    ? "Try adjusting your search or clearing some filters."
+                    : "Be the first to post a climate project and find skilled volunteers."}
                 </p>
-                <button
-                  onClick={clearAllFilters}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0F3D2E] text-white text-sm font-medium rounded-lg hover:bg-[#1a5241] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2F8F6B] focus-visible:ring-offset-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Reset Filters
-                </button>
+                {hasActiveFilters ? (
+                  <button
+                    onClick={clearAllFilters}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0F3D2E] text-white text-sm font-medium rounded-lg hover:bg-[#1a5241] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2F8F6B] focus-visible:ring-offset-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Reset Filters
+                  </button>
+                ) : (
+                  <Link
+                    to={user ? "/projects/new" : "/auth"}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0F3D2E] text-white text-sm font-medium rounded-lg hover:bg-[#1a5241] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2F8F6B] focus-visible:ring-offset-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Post a Project
+                  </Link>
+                )}
+                {!hasActiveFilters && (
+                  <p className="text-xs text-slate-400 dark:text-[#6B8F7F] mt-3">Check back soon for new opportunities</p>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

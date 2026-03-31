@@ -856,6 +856,7 @@ export function CommunityChallenges() {
                                 +{challenge.points_reward || 0} pts
                               </span>
                             </div>
+                          </div>
                         </>
                       ) : (
                         <div className="p-4 sm:p-5">

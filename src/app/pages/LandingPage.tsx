@@ -399,22 +399,27 @@ export function LandingPage() {
       </section>
 
       {/* ════════════════ HOW IT WORKS ════════════════ */}
-      <section className="py-20 md:py-24 bg-white dark:bg-[#0D1F18]">
+      <section className="py-20 md:py-24 bg-slate-50 dark:bg-[#0A1A14]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section header */}
           <motion.div
-            className="text-center mb-12"
+            className="text-center mb-14"
             variants={scrollFade}
             initial="hidden"
             whileInView="show"
             viewport={LANDING_VIEWPORT}>
-            <h2 className="mb-3 text-slate-900 dark:text-[#BEEBD7]" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+            <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide mb-4 bg-[#0F3D2E]/10 text-[#0F3D2E] dark:bg-[#6DD4A8]/15 dark:text-[#6DD4A8]">
               How it works
+            </span>
+            <h2 className="mb-3 text-slate-900 dark:text-[#BEEBD7]" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+              From signup to impact in three steps
             </h2>
-            <p className="max-w-md mx-auto text-slate-600 dark:text-[#94C8AF]">
-              From skill building to real-world action in three steps.
+            <p className="max-w-lg mx-auto text-slate-600 dark:text-[#94C8AF]">
+              Whether you want to learn, volunteer, or post projects, getting started takes minutes.
             </p>
           </motion.div>
 
+          {/* Step cards */}
           <motion.div
             className="grid grid-cols-1 md:grid-cols-3 gap-5"
             variants={staggerInView}
@@ -422,23 +427,61 @@ export function LandingPage() {
             whileInView="show"
             viewport={LANDING_VIEWPORT}>
             {[
-              { step: "1", icon: Sprout, title: "Browse or Post", desc: "Explore climate missions that match your interests, or post a project needing volunteers." },
-              { step: "2", icon: Users, title: "Match & Connect", desc: "Get matched with the right people. Learners find mentors. Organizations find skilled volunteers." },
-              { step: "3", icon: TrendingUp, title: "Make Impact", desc: "Complete missions, earn verified credentials, and track your environmental impact." },
-            ].map(({ step, icon: Icon, title, desc }) => (
+              { 
+                step: "01", 
+                icon: Sprout, 
+                title: "Browse or Post", 
+                desc: "Browse real climate missions, or post a project that needs skilled volunteers.",
+                cta: { label: "Browse missions", to: "/hands-on" }
+              },
+              { 
+                step: "02", 
+                icon: Users, 
+                title: "Match & Connect", 
+                desc: "Get matched with people who can help. Volunteers find projects; organizers find support.",
+                cta: { label: "See how matching works", to: "/about" }
+              },
+              { 
+                step: "03", 
+                icon: TrendingUp, 
+                title: "Make Impact", 
+                desc: "Complete missions, submit proof, and track outcomes as you build an impact portfolio.",
+                cta: { label: "View sample portfolio", to: "/progress" }
+              },
+            ].map(({ step, icon: Icon, title, desc, cta }) => (
               <motion.div
                 key={step}
                 variants={staggerCard}
-                whileHover={reduceMotion ? undefined : { y: -3 }}
-                className="relative bg-slate-50 dark:bg-[#132B23] rounded-xl p-6 text-center border border-slate-100 dark:border-[#6DD4A8]/15">
-                <div className="relative inline-flex items-center justify-center w-12 h-12 rounded-lg mb-4 bg-[#0F3D2E]">
-                  <Icon className="w-5 h-5 text-white" />
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[#0F3D2E] bg-white flex items-center justify-center text-[10px] font-bold ring-2 ring-slate-50 dark:ring-[#132B23]">
-                    {step}
-                  </span>
+                whileHover={reduceMotion ? undefined : { y: -4, boxShadow: "0 12px 24px -8px rgba(15, 61, 46, 0.15)" }}
+                className="relative bg-white dark:bg-[#132B23] rounded-xl p-6 border border-slate-200 dark:border-[#1E3B34] shadow-sm hover:border-[#2F8F6B]/40 dark:hover:border-[#6DD4A8]/40 transition-all duration-200 focus-within:ring-2 focus-within:ring-[#2F8F6B] focus-within:ring-offset-2 dark:focus-within:ring-offset-[#0A1A14]">
+                {/* Step number badge */}
+                <span className="absolute top-5 right-5 text-[11px] font-bold text-slate-300 dark:text-[#1E3B34] tracking-wide">
+                  {step}
+                </span>
+                
+                {/* Icon */}
+                <div className="w-11 h-11 rounded-lg flex items-center justify-center mb-5 bg-[#E8F5EF] dark:bg-[#1E3B34]">
+                  <Icon className="w-5 h-5 text-[#0F3D2E] dark:text-[#6DD4A8]" />
                 </div>
-                <h3 className="mb-2 text-slate-900 dark:text-[#BEEBD7]" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700 }}>{title}</h3>
-                <p className="text-sm text-slate-600 dark:text-[#94C8AF] leading-relaxed">{desc}</p>
+                
+                {/* Title */}
+                <h3 className="mb-2 text-slate-900 dark:text-[#BEEBD7]" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: "1.05rem" }}>
+                  {title}
+                </h3>
+                
+                {/* Description */}
+                <p className="text-sm text-slate-600 dark:text-[#94C8AF] leading-relaxed mb-4">
+                  {desc}
+                </p>
+                
+                {/* Micro-CTA link */}
+                <Link 
+                  to={cta.to} 
+                  className="inline-flex items-center gap-1 text-sm font-medium text-[#2F8F6B] dark:text-[#6DD4A8] hover:text-[#0F3D2E] dark:hover:text-[#BEEBD7] transition-colors min-h-[44px] focus:outline-none focus-visible:underline"
+                >
+                  {cta.label}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </motion.div>
             ))}
           </motion.div>

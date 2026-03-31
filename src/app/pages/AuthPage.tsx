@@ -34,36 +34,27 @@ const ROLES = [
     id: "learner" as RoleType,
     icon: Sprout,
     title: "I'm a Learner",
-    description: "I want to build green skills from scratch and participate in climate missions.",
+    description: "Build green skills from scratch and join climate missions.",
     tag: "Beginner-friendly",
-    tagColor: "#2F8F6B",
-    tagBg: "#E6F4EE",
-    iconBg: "#E6F4EE",
-    iconColor: "#2F8F6B",
+    featured: false,
     backendType: "responder" as const,
   },
   {
     id: "jobready" as RoleType,
     icon: Wrench,
-    title: "I'm Job Ready",
-    description: "I already have relevant skills and want to contribute to real climate projects.",
-    tag: "Skilled volunteer",
-    tagColor: "#1E6B9A",
-    tagBg: "#E0F0FA",
-    iconBg: "#E0F0FA",
-    iconColor: "#1E6B9A",
+    title: "I'm a Volunteer",
+    description: "Deploy your skills on real climate projects and build an impact portfolio.",
+    tag: "Recommended",
+    featured: true,
     backendType: "responder" as const,
   },
   {
     id: "organization" as RoleType,
     icon: Building2,
     title: "I'm an Organization",
-    description: "I represent a group that needs skilled volunteers for climate initiatives.",
-    tag: "Project coordinator",
-    tagColor: "#7C3AED",
-    tagBg: "#EDE9FE",
-    iconBg: "#EDE9FE",
-    iconColor: "#7C3AED",
+    description: "Post projects and get matched with skilled volunteers.",
+    tag: "Post projects",
+    featured: false,
     backendType: "poster" as const,
   },
 ];
@@ -177,90 +168,75 @@ export function AuthPage() {
   return (
     <div className="min-h-screen flex bg-[#F9FAFB] dark:bg-[#0D1F18]">
 
-      {/* ── Left panel ── */}
-      <div
-        className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-10 bg-[linear-gradient(160deg,#0A2E20_0%,#0F3D2E_50%,#1A5C43_100%)]"
-      >
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)" }}>
-            <Leaf className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl text-white" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800 }}>
-            SkillSeed
-          </span>
-        </Link>
+      {/* ── Left panel (no redundant logo - navbar has it) ── */}
+      <div className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-10 bg-[#0F3D2E]">
+        {/* Top spacer */}
+        <div />
 
+        {/* Main content */}
         <div>
-          <h2 className="text-white mb-4" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: "2rem", lineHeight: 1.2 }}>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-white/80 text-xs font-medium mb-4">
+            <Leaf className="w-3 h-3" /> Early Access
+          </span>
+          <h2 className="text-white mb-4" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: "1.75rem", lineHeight: 1.3 }}>
             Every skill planted grows into real climate action.
           </h2>
-          <p style={{ color: "rgba(255,255,255,0.65)", lineHeight: 1.7 }}>
-            Join 12,000+ learners, skilled volunteers, and organisations tackling climate change through real-world missions.
+          <p className="text-white/65 text-sm leading-relaxed">
+            Be among the first to join a community tackling climate change through real-world missions.
           </p>
 
-          <div className="mt-8 space-y-4">
-            {[
-              { emoji: "🌱", text: "Complete real-world climate missions" },
-              { emoji: "🤝", text: "Connect with skilled volunteers & orgs" },
-              { emoji: "🏆", text: "Earn points and unlock impact badges" },
-              { emoji: "🌍", text: "Track your verified environmental impact" },
-            ].map(({ emoji, text }) => (
-              <div key={text} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.1)" }}>
-                  <span className="text-base">{emoji}</span>
-                </div>
-                <span className="text-sm" style={{ color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>{text}</span>
+          <div className="mt-8 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/10">
+                <Leaf className="w-4 h-4 text-[#6DD4A8]" />
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="flex -space-x-3 mb-3">
-            {["MS", "JR", "LC", "AB", "DK"].map((initials, i) => (
-              <div
-                key={i}
-                className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-xs text-white"
-                style={{ background: ["#2F8F6B", "#059669", "#1EB89A", "#0F3D2E", "#34D399"][i], fontWeight: 700 }}
-              >
-                {initials}
+              <span className="text-sm text-white/80 font-medium">Complete real-world climate missions</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/10">
+                <Wrench className="w-4 h-4 text-[#6DD4A8]" />
               </div>
-            ))}
-            <div className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-xs text-white" style={{ background: "rgba(255,255,255,0.2)", fontWeight: 700 }}>
-              +12K
+              <span className="text-sm text-white/80 font-medium">Connect with skilled volunteers</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/10">
+                <Sprout className="w-4 h-4 text-[#6DD4A8]" />
+              </div>
+              <span className="text-sm text-white/80 font-medium">Track your environmental impact</span>
             </div>
           </div>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-            12,840 climate participants and counting
-          </p>
         </div>
+
+        {/* Bottom - honest footer */}
+        <p className="text-xs text-white/40">
+          All profiles are verified before matching.
+        </p>
       </div>
 
       {/* ── Right panel ── */}
       <div className="flex-1 flex items-start justify-center p-6 overflow-y-auto">
         <div className="w-full max-w-lg py-8">
 
-          {/* Mobile logo */}
+          {/* Mobile logo + beta badge */}
           <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0F3D2E, #2F8F6B)" }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#0F3D2E]">
               <Leaf className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, color: "#0F3D2E" }}>SkillSeed</span>
+            <span className="text-lg text-[#0F3D2E] dark:text-[#BEEBD7]" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800 }}>SkillSeed</span>
+            <span className="px-1.5 py-0.5 rounded bg-[#E8F5EF] dark:bg-[#1E3B34] text-[#2F8F6B] dark:text-[#6DD4A8] text-[10px] font-semibold">Beta</span>
           </Link>
 
           {/* Tabs */}
-          <div className="flex rounded-xl p-1 mb-8" style={{ background: "#F3F4F6" }}>
+          <div className="flex rounded-xl p-1 mb-8 bg-slate-100 dark:bg-[#1E3B34]">
             {(["login", "signup"] as const).map(t => (
               <button
                 key={t}
                 onClick={() => { setTab(t); setStep(1); setRole(null); setError(null); }}
-                className="flex-1 py-2.5 rounded-lg text-sm capitalize transition-all duration-200"
-                style={{
-                  background: tab === t ? "white" : "transparent",
-                  color: tab === t ? "#0F3D2E" : "#6B7280",
-                  fontWeight: tab === t ? 700 : 500,
-                  boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                }}
+                className={`flex-1 py-2.5 rounded-lg text-sm capitalize transition-all duration-200 ${
+                  tab === t 
+                    ? "bg-white dark:bg-[#132B23] text-[#0F3D2E] dark:text-[#BEEBD7] font-bold shadow-sm" 
+                    : "text-slate-500 dark:text-[#94C8AF] font-medium"
+                }`}
               >
                 {t === "signup" ? "Create Account" : "Log In"}
               </button>
@@ -285,42 +261,45 @@ export function AuthPage() {
               </p>
 
               <div className="flex flex-col gap-3 mb-7">
-                {ROLES.map(({ id, icon: Icon, title, description, tag, tagColor, tagBg, iconBg, iconColor }) => {
+                {ROLES.map(({ id, icon: Icon, title, description, tag, featured }) => {
                   const selected = role === id;
                   return (
                     <button
                       key={id}
                       onClick={() => setRole(id)}
-                      className="relative text-left rounded-2xl p-5 transition-all duration-200"
-                      style={{
-                        border: selected ? `2px solid ${iconColor}` : "2px solid #E5E7EB",
-                        background: selected ? iconBg : "white",
-                        boxShadow: selected ? `0 4px 20px ${iconColor}28` : "0 1px 4px rgba(0,0,0,0.04)",
-                        transform: selected ? "translateY(-1px)" : "none",
-                      }}
+                      className={`relative text-left rounded-xl p-5 transition-all duration-200 border-2 bg-white dark:bg-[#132B23] ${
+                        selected 
+                          ? "border-[#2F8F6B] ring-2 ring-[#2F8F6B]/20 shadow-md" 
+                          : featured 
+                            ? "border-[#2F8F6B]/40 dark:border-[#6DD4A8]/30" 
+                            : "border-slate-200 dark:border-[#1E3B34]"
+                      }`}
                     >
+                      {featured && !selected && (
+                        <div className="absolute -top-2.5 left-4 px-2 py-0.5 rounded bg-[#2F8F6B] text-white text-[10px] font-semibold">
+                          Recommended
+                        </div>
+                      )}
                       <div className="flex items-start gap-4">
-                        <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: selected ? iconColor : iconBg }}
-                        >
-                          <Icon className="w-5 h-5" style={{ color: selected ? "white" : iconColor }} />
+                        <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${
+                          selected ? "bg-[#0F3D2E]" : "bg-slate-100 dark:bg-[#1E3B34]"
+                        }`}>
+                          <Icon className={`w-5 h-5 ${selected ? "text-white" : "text-[#0F3D2E] dark:text-[#6DD4A8]"}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="text-sm" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, color: "#0F3D2E" }}>
+                            <span className="text-sm text-slate-900 dark:text-[#BEEBD7]" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700 }}>
                               {title}
                             </span>
-                            <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: tagBg, color: tagColor, fontWeight: 600 }}>
+                            <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-[#1E3B34] text-slate-600 dark:text-[#94C8AF] text-[10px] font-medium">
                               {tag}
                             </span>
                           </div>
-                          <p className="text-xs leading-relaxed" style={{ color: "#6B7280" }}>{description}</p>
+                          <p className="text-xs leading-relaxed text-slate-500 dark:text-[#6B8F7F]">{description}</p>
                         </div>
-                        <div
-                          className="w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all"
-                          style={{ borderColor: selected ? iconColor : "#D1D5DB", background: selected ? iconColor : "transparent" }}
-                        >
+                        <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                          selected ? "border-[#2F8F6B] bg-[#2F8F6B]" : "border-slate-300 dark:border-[#1E3B34]"
+                        }`}>
                           {selected && <div className="w-2 h-2 rounded-full bg-white" />}
                         </div>
                       </div>
@@ -396,12 +375,12 @@ export function AuthPage() {
 
               {/* Role reminder chip */}
               {selectedRole && (
-                <div className="flex items-center gap-3 p-3 rounded-xl mb-5" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: selectedRole.iconBg }}>
-                    <selectedRole.icon className="w-4 h-4" style={{ color: selectedRole.iconColor }} />
+                <div className="flex items-center gap-3 p-3 rounded-xl mb-5 bg-slate-50 dark:bg-[#1E3B34] border border-slate-200 dark:border-[#1E3B34]">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-[#132B23]">
+                    <selectedRole.icon className="w-4 h-4 text-[#0F3D2E] dark:text-[#6DD4A8]" />
                   </div>
-                  <span className="text-sm" style={{ color: "#374151", fontWeight: 600 }}>{selectedRole.title}</span>
-                  <button onClick={() => setStep(1)} className="ml-auto text-xs" style={{ color: "#9CA3AF", fontWeight: 500 }}>Change</button>
+                  <span className="text-sm text-slate-700 dark:text-[#BEEBD7] font-semibold">{selectedRole.title}</span>
+                  <button onClick={() => setStep(1)} className="ml-auto text-xs text-slate-400 dark:text-[#6B8F7F] font-medium hover:text-slate-600 dark:hover:text-[#94C8AF]">Change</button>
                 </div>
               )}
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Trophy,
   Users,
@@ -6,7 +7,6 @@ import {
   Star,
   Flame,
   TrendingUp,
-  MapPin,
   ChevronRight,
   Plus,
   Share2,
@@ -17,7 +17,13 @@ import {
   ArrowUp,
   Loader2,
   Camera,
-  Heart,
+  Search,
+  Filter,
+  X,
+  AlertCircle,
+  RefreshCw,
+  LogIn,
+  Info,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../utils/supabase";
@@ -38,24 +44,40 @@ import {
   fetchCommunityFeed,
   fetchUserLikedSubmissions,
   subscribeToFeed,
-  hasUserSubmitted,
 } from "../utils/challengeService";
 import { CreateChallengeModal } from "../components/CreateChallengeModal";
 import { SubmissionModal } from "../components/SubmissionModal";
 import { FeedCard } from "../components/FeedCard";
 import type { Challenge, FeaturedChallenge, LeaderboardEntry, CreateChallengeInput, FeedItem } from "../types/database";
 
-// Category color mapping
+// ══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Category icons using lucide-react (no emojis)
+function getCategoryIcon(category: string | null): React.ReactNode {
+  const cat = (category || "").toLowerCase();
+  if (cat.includes("waste")) return <Leaf className="w-5 h-5" />;
+  if (cat.includes("solar") || cat.includes("energy")) return <Flame className="w-5 h-5" />;
+  if (cat.includes("urban") || cat.includes("green")) return <Target className="w-5 h-5" />;
+  if (cat.includes("water")) return <Leaf className="w-5 h-5" />;
+  return <Star className="w-5 h-5" />;
+}
+
+// Category color mapping for chips
 const CATEGORY_COLORS: Record<string, string> = {
-  "Waste Reduction": "bg-lime-100 text-lime-700",
-  "Solar Energy": "bg-amber-100 text-amber-700",
-  "Urban Greening": "bg-green-100 text-green-700",
-  "Water Conservation": "bg-blue-100 text-blue-700",
-  "Energy Efficiency": "bg-orange-100 text-orange-700",
-  "Mixed": "bg-purple-100 text-purple-700",
+  "Waste Reduction": "bg-lime-50 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300",
+  "Solar Energy": "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  "Urban Greening": "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  "Water Conservation": "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  "Energy Efficiency": "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
 };
 
-// Helper to calculate days remaining
+function getCategoryColor(category: string | null): string {
+  return CATEGORY_COLORS[category || ""] || "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+}
+
+// Calculate days remaining
 function getDaysRemaining(deadline: string | null): number {
   if (!deadline) return 30;
   const now = new Date();
@@ -65,7 +87,7 @@ function getDaysRemaining(deadline: string | null): number {
   return Math.max(0, diffDays);
 }
 
-// Helper to get initials from name
+// Get initials from name
 function getInitials(name: string | null): string {
   if (!name) return "??";
   return name
@@ -76,10 +98,68 @@ function getInitials(name: string | null): string {
     .slice(0, 2);
 }
 
+// Validate challenge title (filter out garbage)
+function isValidChallengeTitle(title: string | null): boolean {
+  if (!title) return false;
+  if (title.length < 6) return false;
+  // Must contain at least 3 letters
+  const letterCount = (title.match(/[a-zA-Z]/g) || []).length;
+  if (letterCount < 3) return false;
+  // Check for repeated characters (e.g., "aaaa" or "1111")
+  if (/(.)\1{4,}/.test(title)) return false;
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SKELETON LOADER
+// ══════════════════════════════════════════════════════════════════════════════
+
+function ChallengeCardSkeleton() {
+  return (
+    <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] overflow-hidden animate-pulse">
+      <div className="h-32 bg-slate-100 dark:bg-[#0D1F18]" />
+      <div className="p-4 space-y-3">
+        <div className="flex gap-2">
+          <div className="h-5 w-20 bg-slate-100 dark:bg-[#1E3B34] rounded" />
+          <div className="h-5 w-16 bg-slate-100 dark:bg-[#1E3B34] rounded" />
+        </div>
+        <div className="h-5 w-3/4 bg-slate-100 dark:bg-[#1E3B34] rounded" />
+        <div className="h-4 w-full bg-slate-100 dark:bg-[#1E3B34] rounded" />
+        <div className="flex gap-2 pt-2">
+          <div className="h-9 flex-1 bg-slate-100 dark:bg-[#1E3B34] rounded-lg" />
+          <div className="h-9 w-9 bg-slate-100 dark:bg-[#1E3B34] rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex items-center gap-3 animate-pulse">
+          <div className="w-6 h-6 bg-slate-100 dark:bg-[#1E3B34] rounded" />
+          <div className="w-8 h-8 bg-slate-100 dark:bg-[#1E3B34] rounded-full" />
+          <div className="flex-1">
+            <div className="h-4 w-24 bg-slate-100 dark:bg-[#1E3B34] rounded mb-1" />
+            <div className="h-3 w-16 bg-slate-100 dark:bg-[#1E3B34] rounded" />
+          </div>
+          <div className="h-4 w-12 bg-slate-100 dark:bg-[#1E3B34] rounded" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ══════════════════════════════════════════════════════════════════════════════
+
 export function CommunityChallenges() {
   const { user } = useAuth();
   const [isLoaded, setIsLoaded] = useState(false);
-  
+
   // Data state
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [joinedChallengeIds, setJoinedChallengeIds] = useState<Set<string>>(new Set());
@@ -98,26 +178,22 @@ export function CommunityChallenges() {
   const [userRank, setUserRank] = useState<number | null>(null);
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
   const [featuredChallenge, setFeaturedChallenge] = useState<FeaturedChallenge | null>(null);
-  
+
   // Feed state
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [likedSubmissionIds, setLikedSubmissionIds] = useState<Set<string>>(new Set());
 
   // UI state
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [joiningId, setJoiningId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"all" | "joined" | "featured" | "feed">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "joined" | "feed">("all");
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("All Categories");
-  const [difficultyFilter, setDifficultyFilter] = useState<string>("All Levels");
-  const [joinedOnly, setJoinedOnly] = useState(false);
-  const [minPoints, setMinPoints] = useState<number>(0);
-  const [timeLeftFilter, setTimeLeftFilter] = useState<"any" | "7" | "3">("any");
-  const [sortBy, setSortBy] = useState<"trending" | "ending_soon" | "most_participants" | "most_points">(
-    "trending"
-  );
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
+  const [levelFilter, setLevelFilter] = useState<string>("All");
+  const [sortBy, setSortBy] = useState<"trending" | "ending_soon" | "newest">("trending");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
@@ -142,8 +218,8 @@ export function CommunityChallenges() {
 
   // Fetch all data
   const fetchData = useCallback(async () => {
+    setError(null);
     try {
-      // Fetch challenges, community stats, leaderboard, featured challenge, and feed in parallel
       const [challengesData, statsData, leaderboardData, featuredData, feedData] = await Promise.all([
         fetchActiveChallenges(),
         fetchCommunityStats(),
@@ -157,9 +233,7 @@ export function CommunityChallenges() {
       setLeaderboard(leaderboardData);
       setFeaturedChallenge(featuredData);
       setFeedItems(feedData);
-      setLastUpdatedAt(new Date());
 
-      // If user is logged in, fetch their data
       if (user?.id) {
         const profileId = await fetchUserProfile();
         setUserProfileId(profileId);
@@ -173,7 +247,6 @@ export function CommunityChallenges() {
           ]);
 
           setJoinedChallengeIds(new Set(joinedData.map((j) => j.challenge_id)));
-          // Track which joined challenges user has already completed
           const completedIds = joinedData
             .filter((j) => j.status === "completed")
             .map((j) => j.challenge_id);
@@ -183,14 +256,15 @@ export function CommunityChallenges() {
           setLikedSubmissionIds(new Set(likedData));
         }
       }
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Failed to load challenges. Please try again.");
     } finally {
       setLoading(false);
     }
   }, [user?.id, fetchUserProfile]);
 
-  // Dedicated leaderboard refresh (used by subscription + interval)
+  // Dedicated leaderboard refresh
   const fetchLeaderboardData = useCallback(async () => {
     setLeaderboardLoading(true);
     try {
@@ -201,28 +275,24 @@ export function CommunityChallenges() {
       setLeaderboard(leaderboardData);
       if (rankData !== null) setUserRank(rankData);
     } catch (err) {
-      console.error('Error refreshing leaderboard:', err);
+      console.error("Error refreshing leaderboard:", err);
     } finally {
       setLeaderboardLoading(false);
     }
   }, [userProfileId]);
 
-  // Real-time leaderboard subscription + hourly fallback interval
+  // Real-time subscriptions
   useEffect(() => {
     const leaderboardChannel = subscribeToLeaderboard(() => {
       fetchLeaderboardData();
     });
-
-    // Refresh every 60 minutes as a fallback for clients that miss realtime events
     const interval = setInterval(fetchLeaderboardData, 60 * 60 * 1000);
-
     return () => {
       unsubscribeFromChannel(leaderboardChannel);
       clearInterval(interval);
     };
   }, [fetchLeaderboardData]);
 
-  // Initial data fetch
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -232,16 +302,13 @@ export function CommunityChallenges() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Real-time subscription
   useEffect(() => {
     const challengesChannel = subscribeToChallenges(() => {
       fetchData();
     });
-    
     const feedChannel = subscribeToFeed(() => {
       fetchData();
     });
-
     return () => {
       unsubscribeFromChannel(challengesChannel);
       unsubscribeFromChannel(feedChannel);
@@ -250,15 +317,10 @@ export function CommunityChallenges() {
 
   // Handle join/leave challenge
   const handleJoin = async (challengeId: string) => {
-    if (!user || !userProfileId) {
-      // Optionally redirect to login
-      return;
-    }
-
+    if (!user || !userProfileId) return;
     setJoiningId(challengeId);
     try {
       const isJoined = joinedChallengeIds.has(challengeId);
-      
       if (isJoined) {
         await leaveChallenge(challengeId, userProfileId);
         setJoinedChallengeIds((prev) => {
@@ -270,11 +332,9 @@ export function CommunityChallenges() {
         await joinChallenge(challengeId, userProfileId);
         setJoinedChallengeIds((prev) => new Set(prev).add(challengeId));
       }
-
-      // Refresh data to get updated counts
       fetchData();
-    } catch (error) {
-      console.error("Error joining/leaving challenge:", error);
+    } catch (err) {
+      console.error("Error joining/leaving challenge:", err);
     } finally {
       setJoiningId(null);
     }
@@ -306,7 +366,7 @@ export function CommunityChallenges() {
   };
 
   // Handle like update from feed card
-  const handleLikeUpdate = (submissionId: string, newCount: number, isLiked: boolean) => {
+  const handleLikeUpdate = (submissionId: string, _newCount: number, isLiked: boolean) => {
     setLikedSubmissionIds((prev) => {
       const newSet = new Set(prev);
       if (isLiked) {
@@ -318,137 +378,154 @@ export function CommunityChallenges() {
     });
   };
 
-  // Filter and sort challenges - algorithmically computed featured challenge appears first
-  const categories = ["All Categories", ...Array.from(new Set(challenges.map((c) => c.category || "General")))];
-  const difficulties = ["All Levels", ...Array.from(new Set(challenges.map((c) => c.difficulty || "Beginner")))];
+  // ══════════════════════════════════════════════════════════════════════════════
+  // FILTER & SORT CHALLENGES
+  // Key: Filter out expired (0 days left) and invalid titles
+  // ══════════════════════════════════════════════════════════════════════════════
 
-  const filteredChallenges = challenges
-    .filter((c) => {
-      if (activeTab === "feed") return false;
-      if (activeTab === "joined") return joinedChallengeIds.has(c.id);
-      if (activeTab === "featured") return c.id === featuredChallenge?.id;
-      return true;
-    })
-    .filter((c) => {
-      const matchesSearch =
-        !search ||
-        c.title.toLowerCase().includes(search.toLowerCase()) ||
-        (c.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        (c.category ?? "").toLowerCase().includes(search.toLowerCase());
-      const matchesCategory =
-        categoryFilter === "All Categories" || (c.category ?? "General") === categoryFilter;
-      const matchesDifficulty =
-        difficultyFilter === "All Levels" || (c.difficulty ?? "Beginner") === difficultyFilter;
-      const matchesJoinedOnly = !joinedOnly || joinedChallengeIds.has(c.id);
-      const matchesPoints = (c.points_reward ?? 0) >= minPoints;
-      const daysLeft = getDaysRemaining(c.deadline);
-      const matchesTimeLeft =
-        timeLeftFilter === "any" ||
-        (timeLeftFilter === "7" && daysLeft <= 7) ||
-        (timeLeftFilter === "3" && daysLeft <= 3);
-      return matchesSearch && matchesCategory && matchesDifficulty && matchesJoinedOnly && matchesPoints && matchesTimeLeft;
-    })
-    .sort((a, b) => {
-      // Always pin featured to the top in All/Joined lists.
-      if ((activeTab === "all" || activeTab === "joined") && a.id === featuredChallenge?.id) return -1;
-      if ((activeTab === "all" || activeTab === "joined") && b.id === featuredChallenge?.id) return 1;
+  const categories = useMemo(() => {
+    const cats = new Set(challenges.map((c) => c.category || "General"));
+    return ["All", ...Array.from(cats)];
+  }, [challenges]);
 
-      if (sortBy === "ending_soon") {
+  const levels = useMemo(() => {
+    const lvls = new Set(challenges.map((c) => c.difficulty || "Beginner"));
+    return ["All", ...Array.from(lvls)];
+  }, [challenges]);
+
+  const filteredChallenges = useMemo(() => {
+    return challenges
+      // Filter out expired challenges (0 days left)
+      .filter((c) => getDaysRemaining(c.deadline) > 0)
+      // Filter out invalid/placeholder titles
+      .filter((c) => isValidChallengeTitle(c.title))
+      // Tab filter
+      .filter((c) => {
+        if (activeTab === "feed") return false;
+        if (activeTab === "joined") return joinedChallengeIds.has(c.id);
+        return true;
+      })
+      // Search filter
+      .filter((c) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+          c.title.toLowerCase().includes(q) ||
+          (c.description ?? "").toLowerCase().includes(q) ||
+          (c.category ?? "").toLowerCase().includes(q)
+        );
+      })
+      // Category filter
+      .filter((c) => categoryFilter === "All" || (c.category ?? "General") === categoryFilter)
+      // Level filter
+      .filter((c) => levelFilter === "All" || (c.difficulty ?? "Beginner") === levelFilter)
+      // Sort
+      .sort((a, b) => {
+        // Pin featured first
+        if (a.id === featuredChallenge?.id) return -1;
+        if (b.id === featuredChallenge?.id) return 1;
+
+        if (sortBy === "ending_soon") {
+          return getDaysRemaining(a.deadline) - getDaysRemaining(b.deadline);
+        }
+        if (sortBy === "newest") {
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        }
+        // trending: participants then ending soon
+        const participantDiff = (b.participant_count ?? 0) - (a.participant_count ?? 0);
+        if (participantDiff !== 0) return participantDiff;
         return getDaysRemaining(a.deadline) - getDaysRemaining(b.deadline);
-      }
-      if (sortBy === "most_participants") {
-        return (b.participant_count ?? 0) - (a.participant_count ?? 0);
-      }
-      if (sortBy === "most_points") {
-        return (b.points_reward ?? 0) - (a.points_reward ?? 0);
-      }
-      // trending: prioritize featured score if present, then participants, then ending soon.
-      const aScore = a.id === featuredChallenge?.id ? featuredChallenge?.activity_score ?? 0 : 0;
-      const bScore = b.id === featuredChallenge?.id ? featuredChallenge?.activity_score ?? 0 : 0;
-      const scoreDiff = bScore - aScore;
-      if (scoreDiff !== 0) return scoreDiff;
-      const participantDiff = (b.participant_count ?? 0) - (a.participant_count ?? 0);
-      if (participantDiff !== 0) return participantDiff;
-      return getDaysRemaining(a.deadline) - getDaysRemaining(b.deadline);
-    });
+      });
+  }, [challenges, activeTab, search, categoryFilter, levelFilter, sortBy, joinedChallengeIds, featuredChallenge]);
 
-  // Check if a challenge is the featured one
   const isFeatured = (challengeId: string) => challengeId === featuredChallenge?.id;
 
-  // Calculate points to next rank
-  const getPointsToNextRank = () => {
-    if (!userRank || userRank <= 1 || leaderboard.length < 2) return null;
-    const currentUserEntry = leaderboard.find((e) => e.user_id === userProfileId);
-    const nextRankEntry = leaderboard[userRank - 2]; // -2 because rank is 1-indexed
-    if (!currentUserEntry || !nextRankEntry) return null;
-    return nextRankEntry.total_points - currentUserEntry.total_points;
+  const clearFilters = () => {
+    setSearch("");
+    setCategoryFilter("All");
+    setLevelFilter("All");
+    setSortBy("trending");
   };
+
+  const hasActiveFilters = search || categoryFilter !== "All" || levelFilter !== "All" || sortBy !== "trending";
+
+  // Check if we have real data (not beta/demo)
+  const hasRealData = communityStats.totalChallengers > 0 || leaderboard.length > 0;
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // LOADING STATE
+  // ══════════════════════════════════════════════════════════════════════════════
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F9FDFB] dark:bg-[#0D1F18]">
-        <div className="bg-gradient-to-br from-[#0F3D2E] to-[#1A5C43] py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="h-8 w-72 bg-white/20 rounded animate-pulse mb-3" />
+      <div className="min-h-screen bg-white dark:bg-[#0D1F18]">
+        {/* Header skeleton */}
+        <div className="bg-[#0F3D2E] py-10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="h-8 w-64 bg-white/20 rounded animate-pulse mb-2" />
             <div className="h-5 w-96 bg-white/10 rounded animate-pulse" />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-24 bg-white/10 rounded-xl animate-pulse" />
-              ))}
-            </div>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-44 bg-white rounded-2xl border border-gray-100 animate-pulse" />
-            ))}
-          </div>
-          <div className="space-y-4">
-            <div className="h-64 bg-white rounded-2xl border border-gray-100 animate-pulse" />
-            <div className="h-40 bg-white rounded-2xl border border-gray-100 animate-pulse" />
+        {/* Content skeleton */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <ChallengeCardSkeleton key={i} />
+              ))}
+            </div>
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-5">
+                <div className="h-5 w-32 bg-slate-100 dark:bg-[#1E3B34] rounded mb-4 animate-pulse" />
+                <LeaderboardSkeleton />
+              </div>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  const pointsToNext = getPointsToNextRank();
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ERROR STATE
+  // ══════════════════════════════════════════════════════════════════════════════
 
-  const activeFilterChips: string[] = [
-    search ? `Search: ${search}` : "",
-    categoryFilter !== "All Categories" ? categoryFilter : "",
-    difficultyFilter !== "All Levels" ? difficultyFilter : "",
-    joinedOnly ? "Joined only" : "",
-    minPoints > 0 ? `Min points: ${minPoints}` : "",
-    timeLeftFilter !== "any" ? `${timeLeftFilter}d left` : "",
-    sortBy !== "trending" ? `Sort: ${sortBy.replace("_", " ")}` : "",
-  ].filter(Boolean);
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#0D1F18] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-8 text-center">
+          <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-7 h-7 text-red-500" />
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Something went wrong</h2>
+          <p className="text-sm text-slate-600 dark:text-[#94C8AF] mb-6">{error}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchData();
+            }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#0F3D2E] text-white text-sm font-medium hover:bg-[#2F8F6B] transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const clearAllFilters = () => {
-    setSearch("");
-    setCategoryFilter("All Categories");
-    setDifficultyFilter("All Levels");
-    setJoinedOnly(false);
-    setMinPoints(0);
-    setTimeLeftFilter("any");
-    setSortBy("trending");
-  };
-
-  const weeklyGoal = Math.max(500, Math.ceil((communityStats.totalActions + 1) / 500) * 500);
-  const weeklyProgress = Math.min(1, communityStats.totalActions / weeklyGoal);
-  const featured = featuredChallenge ?? null;
+  // ══════════════════════════════════════════════════════════════════════════════
+  // MAIN RENDER
+  // ══════════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="min-h-screen bg-[#F9FDFB] dark:bg-[#0D1F18]">
-      {/* Create Challenge Modal */}
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0D1F18]">
+      {/* Modals */}
       <CreateChallengeModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         onSubmit={handleCreateChallenge}
       />
-
-      {/* Submission Modal */}
       {selectedChallengeForSubmission && userProfileId && (
         <SubmissionModal
           open={submissionModalOpen}
@@ -459,290 +536,181 @@ export function CommunityChallenges() {
         />
       )}
 
-      {/* Header */}
-      <div className="bg-gradient-to-br from-[#0F3D2E] to-[#1A5C43] py-12 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-[#2F8F6B]/10 blur-3xl" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* ══════════════════════════════════════════════════════════════════════════════
+          HEADER
+      ══════════════════════════════════════════════════════════════════════════════ */}
+      <header className="bg-[#0F3D2E] py-10 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 80% 20%, #2F8F6B 0%, transparent 50%)" }} />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Trophy className="w-6 h-6 text-amber-400" />
-                <span className="text-[#6DD4A8] font-semibold text-sm tracking-wide">Community Challenges</span>
+                <Trophy className="w-5 h-5 text-amber-400" />
+                <span className="text-[#6DD4A8] font-medium text-sm">Community Challenges</span>
               </div>
-              <h1 className="text-[#BEEBD7] dark:text-[#B7C96A] font-[Manrope] font-bold text-3xl md:text-4xl mb-2">
+              <h1 className="text-white font-bold text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
                 Compete. Collaborate. Impact.
               </h1>
-              <p className="text-white max-w-lg text-sm md:text-base">
+              <p className="text-white/70 text-sm md:text-base max-w-lg">
                 Join challenges that turn small actions into visible progress for your community.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setCreateModalOpen(true)}
-                disabled={!user}
-                className="flex items-center gap-2 bg-[#2F8F6B] text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-[#257A5B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Plus className="w-4 h-4" />
-                Create Challenge
-              </button>
-            </div>
+            <button
+              onClick={() => user ? setCreateModalOpen(true) : null}
+              disabled={!user}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white text-[#0F3D2E] font-semibold text-sm hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            >
+              <Plus className="w-4 h-4" />
+              Start a Challenge
+            </button>
           </div>
 
-          {/* Community stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
-            <div className="bg-white/10 backdrop-blur rounded-xl p-4 text-center">
-              <div className="flex justify-center mb-1 text-[#6DD4A8]">
-                <Users className="w-5 h-5" />
+          {/* ══════════════════════════════════════════════════════════════════════════════
+              STAT CARDS - Honest "Beta Preview" Pattern
+          ══════════════════════════════════════════════════════════════════════════════ */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
+            {[
+              { icon: Users, label: "Active members", value: communityStats.totalChallengers },
+              { icon: Target, label: "Running now", value: communityStats.activeChallenges },
+              { icon: Leaf, label: "Actions logged", value: communityStats.totalActions },
+              { icon: Trophy, label: "Challenges", value: filteredChallenges.length },
+            ].map(({ icon: Icon, label, value }) => (
+              <div
+                key={label}
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/5"
+              >
+                <Icon className="w-5 h-5 text-[#6DD4A8] mx-auto mb-1" />
+                <div className="text-xl font-bold text-white" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {value > 0 ? value.toLocaleString() : (
+                    <span className="text-white/50">0</span>
+                  )}
+                </div>
+                <div className="text-white/60 text-xs mt-0.5">{label}</div>
+                {value === 0 && (
+                  <div className="text-[10px] text-[#6DD4A8]/70 mt-1">Be the first</div>
+                )}
               </div>
-              <div className="text-2xl font-[Manrope] font-bold text-white">
-                {communityStats.totalChallengers.toLocaleString()}
-              </div>
-              <div className="text-white text-xs mt-0.5">Active members</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur rounded-xl p-4 text-center">
-              <div className="flex justify-center mb-1 text-[#6DD4A8]">
-                <Target className="w-5 h-5" />
-              </div>
-              <div className="text-2xl font-[Manrope] font-bold text-white">
-                {communityStats.activeChallenges}
-              </div>
-              <div className="text-white text-xs mt-0.5">Running now</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur rounded-xl p-4 text-center">
-              <div className="flex justify-center mb-1 text-[#6DD4A8]">
-                <Leaf className="w-5 h-5" />
-              </div>
-              <div className="text-2xl font-[Manrope] font-bold text-white">
-                {communityStats.totalActions.toLocaleString()}
-              </div>
-              <div className="text-white text-xs mt-0.5">Actions</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur rounded-xl p-4 text-center">
-              <div className="flex justify-center mb-1 text-[#6DD4A8]">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <div className="text-2xl font-[Manrope] font-bold text-white">
-                {challenges.length}
-              </div>
-              <div className="text-white text-xs mt-0.5">Challenges</div>
-            </div>
+            ))}
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main challenges */}
-          <div className="lg:col-span-2">
-            {/* Weekly community goal */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_6px_20px_rgba(15,61,46,0.08)] p-5 mb-6 transition-all duration-300 ease-out motion-reduce:transition-none hover:shadow-[0_10px_24px_rgba(15,61,46,0.10)]">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Community goal</p>
-                  <p className="font-[Manrope] font-bold text-[#0F3D2E] text-lg mt-1">
-                    Reach {weeklyGoal.toLocaleString()} actions this week
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Build momentum together with consistent small wins.
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold text-[#0F3D2E]">{communityStats.totalActions.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">actions so far</p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div
-                    className="h-full bg-[#2F8F6B] transition-[width] duration-700 ease-out motion-reduce:transition-none"
-                    style={{ width: `${Math.round(weeklyProgress * 100)}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                  <span>Progress</span>
-                  <span>{Math.round(weeklyProgress * 100)}%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Tab filter */}
-            <div className="flex gap-1 bg-white rounded-xl border border-gray-100 shadow-sm p-1 mb-6 w-fit">
-              {(["all", "featured", "joined", "feed"] as const).map(tab => (
+      {/* ══════════════════════════════════════════════════════════════════════════════
+          MAIN CONTENT
+      ══════════════════════════════════════════════════════════════════════════════ */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ══════════════════════════════════════════════════════════════════════════════
+              LEFT COLUMN - Challenges
+          ══════════════════════════════════════════════════════════════════════════════ */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Tabs */}
+            <div className="flex items-center gap-1 bg-white dark:bg-[#132B23] rounded-lg border border-slate-200 dark:border-[#1E3B34] p-1 w-fit">
+              {(["all", "joined", "feed"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
-                    activeTab === tab ? "bg-[#0F3D2E] text-white" : "text-gray-600 hover:bg-[#E6F4EE]"
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[36px] ${
+                    activeTab === tab
+                      ? "bg-[#0F3D2E] text-white"
+                      : "text-slate-600 dark:text-[#94C8AF] hover:bg-slate-100 dark:hover:bg-[#1E3B34]"
                   }`}
                 >
-                  {tab === "all" ? "All Challenges" : tab === "featured" ? "Top Challenge" : tab === "feed" ? `Feed (${feedItems.length})` : `Joined (${joinedChallengeIds.size})`}
+                  {tab === "all" ? "All" : tab === "joined" ? `Joined (${joinedChallengeIds.size})` : `Feed (${feedItems.length})`}
                 </button>
               ))}
             </div>
 
-            {/* Search / filters / sort (hidden on feed) */}
+            {/* Search & Filters - Mobile */}
             {activeTab !== "feed" && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_6px_20px_rgba(15,61,46,0.08)] p-4 mb-6 transition-all duration-300 ease-out motion-reduce:transition-none hover:shadow-[0_10px_24px_rgba(15,61,46,0.10)]">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex-1">
+              <>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
+                      type="text"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search challenges, categories, keywords..."
-                      className="w-full min-h-10 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 focus:border-[#2F8F6B]"
+                      placeholder="Search challenges..."
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-[#1E3B34] bg-white dark:bg-[#132B23] text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 focus:border-[#2F8F6B] min-h-[44px]"
                     />
                   </div>
+                  <button
+                    onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+                    className={`md:hidden px-3 py-2.5 rounded-lg border transition-colors min-h-[44px] ${
+                      hasActiveFilters
+                        ? "border-[#2F8F6B] bg-[#E6F4EE] dark:bg-[#1E3B34] text-[#0F3D2E] dark:text-[#6DD4A8]"
+                        : "border-slate-200 dark:border-[#1E3B34] bg-white dark:bg-[#132B23] text-slate-600 dark:text-[#94C8AF]"
+                    }`}
+                  >
+                    <Filter className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Filters - Desktop inline, Mobile drawer */}
+                <div className={`${mobileFiltersOpen ? "block" : "hidden"} md:flex md:flex-wrap items-center gap-2`}>
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="min-h-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
-                    aria-label="Category filter"
+                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-[#1E3B34] bg-white dark:bg-[#132B23] text-sm text-slate-700 dark:text-[#BEEBD7] focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 min-h-[40px]"
                   >
                     {categories.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
+                      <option key={c} value={c}>{c === "All" ? "All Categories" : c}</option>
                     ))}
                   </select>
                   <select
-                    value={difficultyFilter}
-                    onChange={(e) => setDifficultyFilter(e.target.value)}
-                    className="min-h-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
-                    aria-label="Difficulty filter"
+                    value={levelFilter}
+                    onChange={(e) => setLevelFilter(e.target.value)}
+                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-[#1E3B34] bg-white dark:bg-[#132B23] text-sm text-slate-700 dark:text-[#BEEBD7] focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 min-h-[40px]"
                   >
-                    {difficulties.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
+                    {levels.map((l) => (
+                      <option key={l} value={l}>{l === "All" ? "All Levels" : l}</option>
                     ))}
                   </select>
                   <select
                     value={sortBy}
-                    onChange={(e) =>
-                      setSortBy(e.target.value as "trending" | "ending_soon" | "most_participants" | "most_points")
-                    }
-                    className="min-h-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
-                    aria-label="Sort challenges"
+                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-[#1E3B34] bg-white dark:bg-[#132B23] text-sm text-slate-700 dark:text-[#BEEBD7] focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 min-h-[40px]"
                   >
                     <option value="trending">Trending</option>
                     <option value="ending_soon">Ending soon</option>
-                    <option value="most_participants">Most participants</option>
-                    <option value="most_points">Most points</option>
+                    <option value="newest">Newest</option>
                   </select>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 mt-3">
-                  <label className="inline-flex items-center gap-2 text-sm text-gray-600">
-                    <input
-                      type="checkbox"
-                      checked={joinedOnly}
-                      onChange={(e) => setJoinedOnly(e.target.checked)}
-                      className="rounded border-gray-300 text-[#2F8F6B] focus:ring-[#2F8F6B]"
-                    />
-                    Joined only
-                  </label>
-                  <select
-                    value={String(minPoints)}
-                    onChange={(e) => setMinPoints(Number(e.target.value))}
-                    className="min-h-10 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
-                    aria-label="Minimum points"
-                  >
-                    <option value="0">Any points</option>
-                    <option value="25">25+ points</option>
-                    <option value="50">50+ points</option>
-                    <option value="75">75+ points</option>
-                    <option value="100">100+ points</option>
-                  </select>
-                  <select
-                    value={timeLeftFilter}
-                    onChange={(e) => setTimeLeftFilter(e.target.value as "any" | "7" | "3")}
-                    className="min-h-10 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30"
-                    aria-label="Time left filter"
-                  >
-                    <option value="any">Any deadline</option>
-                    <option value="7">Ending in 7 days</option>
-                    <option value="3">Ending in 3 days</option>
-                  </select>
-                </div>
-
-                {activeFilterChips.length > 0 && (
-                  <div className="flex items-center gap-2 mt-3 flex-wrap">
-                    {activeFilterChips.map((chip) => (
-                      <span
-                        key={chip}
-                        className="text-xs font-medium px-3 py-1 rounded-full bg-[#E6F4EE] text-[#0F3D2E]"
-                      >
-                        {chip}
-                      </span>
-                    ))}
+                  {hasActiveFilters && (
                     <button
-                      onClick={clearAllFilters}
-                      className="text-xs font-semibold text-[#2F8F6B] hover:text-[#0F3D2E] underline"
+                      onClick={clearFilters}
+                      className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-[#2F8F6B] hover:text-[#0F3D2E] dark:hover:text-[#6DD4A8] transition-colors"
                     >
-                      Clear all
+                      <X className="w-3.5 h-3.5" />
+                      Clear
                     </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </>
             )}
 
-            {activeTab !== "feed" && featured && (
-              <div className="bg-white rounded-2xl border border-[#2F8F6B]/30 shadow-[0_6px_20px_rgba(15,61,46,0.08)] overflow-hidden mb-6 transition-all duration-300 ease-out motion-reduce:transition-none hover:shadow-[0_12px_26px_rgba(15,61,46,0.12)]">
-                <div className="bg-gradient-to-r from-[#2F8F6B] to-[#0F3D2E] px-4 py-2 flex items-center justify-between">
-                  <span className="text-white text-xs font-semibold tracking-wide">Featured this week</span>
-                  <span className="text-[#D4F3E6] text-xs">Most completions and urgency</span>
-                </div>
-                <div className="p-4 sm:p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl">{featured.title}</h3>
-                      <p className="text-sm text-gray-500 mt-1">Featured for the highest activity this week.</p>
-                    </div>
-                    <span className="text-sm font-bold text-[#2F8F6B]">+{featured.points_reward} points</span>
-                  </div>
-                  <div className="flex flex-wrap gap-3 mt-4 text-sm text-gray-500">
-                    <span className="inline-flex items-center gap-1.5"><Users className="w-4 h-4" /> {featured.participant_count.toLocaleString()} joined</span>
-                    <span className="inline-flex items-center gap-1.5"><Clock className="w-4 h-4" /> {getDaysRemaining(featured.deadline)} days left</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <Flame className="w-4 h-4 text-amber-500" /> Score {featured.activity_score.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => handleJoin(featured.id)}
-                      disabled={!user || joiningId === featured.id}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-all duration-300 delay-75 motion-reduce:transition-none hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
-                    >
-                      {joiningId === featured.id ? "Joining..." : joinedChallengeIds.has(featured.id) ? "Joined" : "Join now"}
-                    </button>
-                    <button
-                      onClick={() => setSelectedChallenge(featured)}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:border-[#2F8F6B]/50 transition-all duration-300 delay-75 motion-reduce:transition-none hover:scale-[1.01] active:scale-[0.99]"
-                    >
-                      View details
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
+            {/* ══════════════════════════════════════════════════════════════════════════════
+                CHALLENGE LIST
+            ══════════════════════════════════════════════════════════════════════════════ */}
             {activeTab === "feed" ? (
-              // Feed view - narrower centered column
               feedItems.length === 0 ? (
-                <div className="max-w-xl mx-auto">
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-                    <div className="w-16 h-16 rounded-full bg-[#E6F4EE] flex items-center justify-center mx-auto mb-4">
-                      <Camera className="w-8 h-8 text-[#2F8F6B]" />
-                    </div>
-                    <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-lg mb-2">
-                      No submissions yet
-                    </h3>
-                    <p className="text-gray-500 text-sm">
-                      Complete a challenge to start the community feed.
-                    </p>
+                <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-10 text-center">
+                  <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-[#1E3B34] flex items-center justify-center mx-auto mb-4">
+                    <Camera className="w-7 h-7 text-slate-400 dark:text-[#6DD4A8]" />
                   </div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No submissions yet</h3>
+                  <p className="text-sm text-slate-600 dark:text-[#94C8AF] mb-5">
+                    Be the first to complete a challenge and share your progress.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("all")}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#0F3D2E] text-white text-sm font-medium hover:bg-[#2F8F6B] transition-colors"
+                  >
+                    Browse challenges
+                  </button>
                 </div>
               ) : (
-                <div className="max-w-xl mx-auto flex flex-col gap-4 py-4">
+                <div className="max-w-xl mx-auto flex flex-col gap-4">
                   {feedItems.map((item) => (
                     <FeedCard
                       key={item.id}
@@ -759,224 +727,236 @@ export function CommunityChallenges() {
                 </div>
               )
             ) : filteredChallenges.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-                <div className="w-16 h-16 rounded-full bg-[#E6F4EE] flex items-center justify-center mx-auto mb-4">
-                  <Trophy className="w-8 h-8 text-[#2F8F6B]" />
+              <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-10 text-center">
+                <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-[#1E3B34] flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="w-7 h-7 text-slate-400 dark:text-[#6DD4A8]" />
                 </div>
-                <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-lg mb-2">
-                  {activeTab === "joined" ? "No joined challenges" : activeTab === "featured" ? "No top challenge yet" : "No challenges found"}
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                  {activeTab === "joined" ? "No joined challenges" : "No challenges yet"}
                 </h3>
-                <p className="text-gray-500 text-sm">
+                <p className="text-sm text-slate-600 dark:text-[#94C8AF] mb-5">
                   {activeTab === "joined"
-                    ? "Join a challenge to get started."
-                    : activeTab === "featured"
-                    ? "The top challenge is calculated from activity. Check back soon."
-                    : "Check back soon for new challenges."}
+                    ? "Join a challenge to track your progress here."
+                    : "Be the first to create a challenge for the community."}
                 </p>
-                <div className="flex flex-wrap justify-center gap-2 mt-5">
-                  {activeTab !== "featured" && (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {hasActiveFilters && (
                     <button
-                      onClick={clearAllFilters}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-[#E6F4EE] text-[#0F3D2E] hover:bg-[#d9efe4] transition-colors"
+                      onClick={clearFilters}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 dark:bg-[#1E3B34] text-slate-700 dark:text-[#BEEBD7] text-sm font-medium hover:bg-slate-200 dark:hover:bg-[#2F8F6B]/20 transition-colors"
                     >
                       Clear filters
                     </button>
                   )}
                   <button
-                    onClick={() => setActiveTab("all")}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-colors"
+                    onClick={() => user ? setCreateModalOpen(true) : null}
+                    disabled={!user}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#0F3D2E] text-white text-sm font-medium hover:bg-[#2F8F6B] transition-colors disabled:opacity-50"
                   >
-                    Browse challenges
+                    <Plus className="w-4 h-4" />
+                    Start a Challenge
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {filteredChallenges.map((challenge, index) => {
-                  const challengeStatus = getChallengeStatus(challenge.id);
-                  const isJoined = challengeStatus !== "not-joined";
-                  const isCompleted = challengeStatus === "completed";
+                  const status = getChallengeStatus(challenge.id);
+                  const isJoined = status !== "not-joined";
+                  const isCompleted = status === "completed";
                   const daysLeft = getDaysRemaining(challenge.deadline);
-                  const challengeIsFeatured = isFeatured(challenge.id);
-                  const categoryColor = CATEGORY_COLORS[challenge.category || ""] || "bg-gray-100 text-gray-700";
+                  const isFeaturedChallenge = isFeatured(challenge.id);
 
                   return (
-                    <div
+                    <article
                       key={challenge.id}
-                      className={`bg-white rounded-2xl border shadow-[0_6px_20px_rgba(15,61,46,0.08)] overflow-hidden transition-all duration-300 ease-out motion-reduce:transition-none hover:shadow-[0_14px_28px_rgba(15,61,46,0.12)] hover:-translate-y-0.5 ${
-                        challengeIsFeatured ? "border-[#2F8F6B]/30" : "border-gray-100"
-                      } ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5"}`}
-                      style={{ transitionDelay: `${Math.min(220, (index % 6) * 40)}ms` }}
+                      className={`bg-white dark:bg-[#132B23] rounded-xl border overflow-hidden transition-all duration-200 hover:shadow-md ${
+                        isFeaturedChallenge
+                          ? "border-[#2F8F6B]/40 ring-1 ring-[#2F8F6B]/20"
+                          : "border-slate-200 dark:border-[#1E3B34]"
+                      } ${isLoaded ? "opacity-100" : "opacity-0"}`}
+                      style={{ transitionDelay: `${Math.min(200, index * 40)}ms` }}
                     >
-                      {challengeIsFeatured && (
-                        <div className="bg-gradient-to-r from-[#2F8F6B] to-[#0F3D2E] px-4 py-1.5 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Flame className="w-3.5 h-3.5 text-amber-300" />
-                              <span className="text-white text-xs font-semibold">
-                              {challenge.is_pinned ? "Pinned by admin" : "Featured challenge"}
-                            </span>
-                          </div>
-                          {!challenge.is_pinned && featuredChallenge && (
-                            <span className="text-[#A8D5BF] text-xs font-medium">
-                              Score {featuredChallenge.activity_score.toLocaleString()}
-                            </span>
-                          )}
+                      {/* Featured badge */}
+                      {isFeaturedChallenge && (
+                        <div className="bg-gradient-to-r from-[#2F8F6B] to-[#0F3D2E] px-4 py-1.5 flex items-center gap-2">
+                          <Flame className="w-3.5 h-3.5 text-amber-300" />
+                          <span className="text-white text-xs font-medium">Featured Challenge</span>
                         </div>
                       )}
-                      <div className="flex flex-col sm:flex-row">
-                        <div className="relative sm:w-48 h-40 sm:h-auto flex-shrink-0">
-                          <img
-                            src={challenge.banner_url || "https://images.unsplash.com/photo-1759503407810-f0402fd9f237?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600"}
-                            alt={challenge.title}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                          />
+
+                      <div className="p-4 sm:p-5">
+                        {/* Top row: Category + Level + Days */}
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${getCategoryColor(challenge.category)}`}>
+                            {getCategoryIcon(challenge.category)}
+                            {challenge.category || "General"}
+                          </span>
+                          <span className="text-xs text-slate-400 dark:text-[#6B8F7F]">
+                            {challenge.difficulty || "Beginner"}
+                          </span>
                           {daysLeft <= 7 && (
-                            <div
-                              className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                                daysLeft <= 3 ? "bg-red-500" : "bg-amber-500"
-                              }`}
-                            >
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium ${
+                              daysLeft <= 3 ? "text-red-500" : "text-amber-600"
+                            }`}>
                               <Clock className="w-3 h-3" />
                               {daysLeft}d left
-                            </div>
+                            </span>
                           )}
                         </div>
-                        <div className="p-5 flex-1">
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${categoryColor}`}>
-                                  {challenge.category || "General"}
+
+                        {/* Title */}
+                        <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-2 leading-snug">
+                          {challenge.title}
+                        </h3>
+
+                        {/* Description */}
+                        <p className="text-sm text-slate-600 dark:text-[#94C8AF] leading-relaxed mb-4 line-clamp-2">
+                          {challenge.description}
+                        </p>
+
+                        {/* Meta row */}
+                        <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-[#6B8F7F] mb-4">
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5" />
+                            {challenge.participant_count || 0} joined
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {daysLeft} days left
+                          </span>
+                          <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+                            <Star className="w-3.5 h-3.5" />
+                            +{challenge.points_reward || 0} pts
+                          </span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          {isCompleted ? (
+                            <div className="flex-1 py-2 rounded-lg text-sm font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-1.5">
+                              <CheckCircle className="w-4 h-4" />
+                              Completed
+                            </div>
+                          ) : isJoined ? (
+                            <>
+                              <button
+                                onClick={() => handleOpenSubmissionModal(challenge)}
+                                disabled={!user}
+                                className="flex-1 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50 min-h-[40px]"
+                              >
+                                <span className="inline-flex items-center justify-center gap-1.5">
+                                  <Camera className="w-4 h-4" />
+                                  Submit Proof
                                 </span>
-                                <span className="text-xs text-gray-400">{challenge.difficulty}</span>
-                                {activeTab === "joined" && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200">
-                                    {isCompleted ? "Completed" : daysLeft === 0 ? "Expired" : "Active"}
-                                  </span>
-                                )}
-                              </div>
-                              <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-lg">{challenge.title}</h3>
-                              {challengeIsFeatured && !challenge.is_pinned && (
-                              <p className="text-xs text-gray-500 mt-1">Featured for the highest activity this week.</p>
-                              )}
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-sm font-bold text-[#2F8F6B] flex items-center gap-1">
-                                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                                +{challenge.points_reward} points
-                              </div>
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-500 leading-relaxed mb-3">{challenge.description}</p>
-                          <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                            <span className="flex items-center gap-1.5">
-                              <Users className="w-4 h-4" />
-                              {challenge.participant_count.toLocaleString()} participants
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <Clock className="w-4 h-4" />
-                              {daysLeft} days remaining
-                            </span>
-                          </div>
-                          <div className="flex gap-2">
-                            {isCompleted ? (
-                              <div className="flex-1 py-2 rounded-xl text-sm font-semibold bg-emerald-100 text-emerald-700 flex items-center justify-center gap-1.5">
-                                <CheckCircle className="w-4 h-4" /> Completed
-                              </div>
-                            ) : isJoined ? (
-                              <>
-                                <button
-                                  onClick={() => handleOpenSubmissionModal(challenge)}
-                                  disabled={!user}
-                                  className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#f5a623] text-[#1a3a2a] hover:bg-[#d4891f] transition-all duration-300 delay-75 motion-reduce:transition-none hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
-                                >
-                                  <span className="flex items-center justify-center gap-1.5">
-                                    <Camera className="w-4 h-4" /> Continue
-                                  </span>
-                                </button>
-                                <button
-                                  onClick={() => handleJoin(challenge.id)}
-                                  disabled={!user || joiningId === challenge.id}
-                                  className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition-all duration-300 delay-75 motion-reduce:transition-none hover:scale-[1.01] active:scale-[0.99] text-sm"
-                                >
-                                  {joiningId === challenge.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    "Leave"
-                                  )}
-                                </button>
-                              </>
-                            ) : (
+                              </button>
                               <button
                                 onClick={() => handleJoin(challenge.id)}
                                 disabled={!user || joiningId === challenge.id}
-                                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-all duration-300 delay-75 motion-reduce:transition-none hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+                                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-[#1E3B34] text-slate-500 dark:text-[#94C8AF] hover:border-red-300 hover:text-red-500 transition-colors text-sm min-h-[40px]"
                               >
-                                {joiningId === challenge.id ? (
-                                  <span className="flex items-center justify-center gap-1.5">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center justify-center gap-1.5">
-                                    <Plus className="w-4 h-4" /> Join Challenge
-                                  </span>
-                                )}
+                                {joiningId === challenge.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Leave"}
                               </button>
-                            )}
+                            </>
+                          ) : (
                             <button
-                              onClick={() => setSelectedChallenge(challenge)}
-                              className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:border-[#2F8F6B]/50 transition-colors"
-                              aria-label="View details"
-                              title="View details"
+                              onClick={() => user ? handleJoin(challenge.id) : null}
+                              disabled={joiningId === challenge.id}
+                              className="flex-1 py-2 rounded-lg text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-colors disabled:opacity-50 min-h-[40px]"
                             >
-                              <ChevronRight className="w-4 h-4" />
+                              {!user ? (
+                                <Link to="/auth" className="inline-flex items-center justify-center gap-1.5 w-full">
+                                  <LogIn className="w-4 h-4" />
+                                  Sign in to Join
+                                </Link>
+                              ) : joiningId === challenge.id ? (
+                                <span className="inline-flex items-center justify-center gap-1.5">
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center justify-center gap-1.5">
+                                  <Plus className="w-4 h-4" />
+                                  Join Challenge
+                                </span>
+                              )}
                             </button>
-                            <button className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:border-[#2F8F6B]/50 transition-colors" title="Share">
-                              <Share2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                          )}
+                          <button
+                            onClick={() => setSelectedChallenge(challenge)}
+                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-[#1E3B34] text-slate-500 dark:text-[#94C8AF] hover:border-[#2F8F6B] hover:text-[#2F8F6B] transition-colors min-h-[40px]"
+                            aria-label="View details"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-[#1E3B34] text-slate-500 dark:text-[#94C8AF] hover:border-[#2F8F6B] hover:text-[#2F8F6B] transition-colors min-h-[40px]"
+                            aria-label="Share"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    </article>
                   );
                 })}
               </div>
             )}
           </div>
 
-          {/* Sidebar — leaderboard */}
-          <div className="space-y-5">
-
-            {/* Leaderboard */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-all duration-300 ease-out motion-reduce:transition-none hover:shadow-[0_10px_24px_rgba(15,61,46,0.10)]">
+          {/* ══════════════════════════════════════════════════════════════════════════════
+              RIGHT COLUMN - Sidebar
+          ══════════════════════════════════════════════════════════════════════════════ */}
+          <aside className="space-y-5">
+            {/* ══════════════════════════════════════════════════════════════════════════════
+                LEADERBOARD - Honest Empty State or Demo Label
+            ══════════════════════════════════════════════════════════════════════════════ */}
+            <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Trophy className="w-5 h-5 text-amber-500" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-[Manrope] font-bold text-[#0F3D2E]">Global Leaderboard</h3>
-                  <p className="text-xs text-gray-500">
-                    {lastUpdatedAt ? `Updated ${lastUpdatedAt.toLocaleTimeString()}` : "Updated recently"} · Points earned by completing challenges
-                  </p>
-                </div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">Leaderboard</h3>
+                {leaderboardLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
               </div>
+
               {leaderboard.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">No leaderboard data yet</p>
+                // Empty state - no fake data
+                <div className="text-center py-6">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-[#1E3B34] flex items-center justify-center mx-auto mb-3">
+                    <Award className="w-6 h-6 text-slate-400 dark:text-[#6DD4A8]" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white mb-1">No rankings yet</p>
+                  <p className="text-xs text-slate-500 dark:text-[#94C8AF] mb-4">
+                    Join a challenge to appear on the leaderboard.
+                  </p>
+                  <div className="bg-slate-50 dark:bg-[#0D1F18] rounded-lg p-3 text-left">
+                    <p className="text-xs font-medium text-slate-700 dark:text-[#BEEBD7] mb-2 flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5" />
+                      How points work
+                    </p>
+                    <ul className="text-xs text-slate-500 dark:text-[#94C8AF] space-y-1">
+                      <li>Complete challenges to earn points</li>
+                      <li>Higher difficulty = more points</li>
+                      <li>Bonus points for early completion</li>
+                    </ul>
+                  </div>
+                </div>
               ) : (
-                <div className="space-y-3">
+                // Real leaderboard data
+                <div className="space-y-2.5">
                   {leaderboard.map((entry, index) => {
                     const rank = index + 1;
                     const isYou = entry.user_id === userProfileId;
                     return (
                       <div
                         key={entry.user_id}
-                        className={`flex items-center gap-3 p-2 rounded-xl transition-all duration-200 ease-out motion-reduce:transition-none ${
-                          isYou ? "bg-[#E6F4EE] border border-[#2F8F6B]/20" : "hover:bg-gray-50"
+                        className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                          isYou
+                            ? "bg-[#E6F4EE] dark:bg-[#1E3B34] border border-[#2F8F6B]/20"
+                            : "hover:bg-slate-50 dark:hover:bg-[#1E3B34]/50"
                         }`}
                       >
                         <div
                           className={`w-6 text-center text-sm font-bold flex-shrink-0 ${
-                            rank === 1 ? "text-amber-500" : rank === 2 ? "text-gray-400" : rank === 3 ? "text-amber-700" : "text-gray-400"
+                            rank === 1 ? "text-amber-500" : rank === 2 ? "text-slate-400" : rank === 3 ? "text-amber-700" : "text-slate-400"
                           }`}
                         >
                           {rank}
@@ -984,195 +964,205 @@ export function CommunityChallenges() {
                         {entry.avatar_url ? (
                           <img
                             src={entry.avatar_url}
-                            alt={entry.name}
+                            alt={entry.name || "User"}
                             className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                            loading="lazy"
-                            decoding="async"
                           />
                         ) : (
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                            isYou ? "bg-[#2F8F6B] text-white" : "bg-[#E6F4EE] text-[#0F3D2E]"
-                          }`}>
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                              isYou ? "bg-[#2F8F6B] text-white" : "bg-slate-100 dark:bg-[#0D1F18] text-slate-600 dark:text-[#BEEBD7]"
+                            }`}
+                          >
                             {getInitials(entry.name)}
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1">
-                            <p className="text-sm font-semibold text-[#0F3D2E] truncate">{entry.name}</p>
-                            {isYou && <span className="text-xs text-[#2F8F6B] font-medium">(You)</span>}
+                            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{entry.name}</p>
+                            {isYou && <span className="text-xs text-[#2F8F6B]">(You)</span>}
                           </div>
-                          <p className="text-xs text-gray-400">{entry.location || "Unknown"} · {entry.missions_completed} missions</p>
+                          <p className="text-xs text-slate-400 dark:text-[#6B8F7F]">
+                            {entry.missions_completed || 0} completed
+                          </p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-[#0F3D2E]">{entry.total_points.toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">points</p>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">{entry.total_points.toLocaleString()}</p>
+                          <p className="text-[10px] text-slate-400 dark:text-[#6B8F7F]">pts</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               )}
-              <button className="w-full mt-3 text-sm font-medium text-[#2F8F6B] hover:text-[#0F3D2E] py-2 transition-colors flex items-center justify-center gap-1">
-                Full Leaderboard <ChevronRight className="w-4 h-4" />
-              </button>
             </div>
 
-            {/* My challenge summary */}
+            {/* My Stats - Only show if logged in */}
             {user && (
-              <div className="bg-[#0F3D2E] rounded-2xl p-5 text-white transition-all duration-300 ease-out motion-reduce:transition-none hover:shadow-[0_10px_24px_rgba(15,61,46,0.20)]">
+              <div className="bg-[#0F3D2E] rounded-xl p-5 text-white">
                 <div className="flex items-center gap-2 mb-4">
                   <Award className="w-5 h-5 text-[#6DD4A8]" />
-                  <span className="font-semibold">My Challenge Stats</span>
+                  <span className="font-semibold">My Stats</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white/10 rounded-xl p-3 text-center">
-                    <div className="text-2xl font-[Manrope] font-bold text-white">{userStats.activeChallenges}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white/10 rounded-lg p-3 text-center">
+                    <div className="text-xl font-bold">{userStats.activeChallenges}</div>
                     <div className="text-[#A8D5BF] text-xs mt-0.5">Active</div>
                   </div>
-                  <div className="bg-white/10 rounded-xl p-3 text-center">
-                    <div className="text-2xl font-[Manrope] font-bold text-white">{userStats.completedChallenges}</div>
+                  <div className="bg-white/10 rounded-lg p-3 text-center">
+                    <div className="text-xl font-bold">{userStats.completedChallenges}</div>
                     <div className="text-[#A8D5BF] text-xs mt-0.5">Completed</div>
                   </div>
-                  <div className="bg-white/10 rounded-xl p-3 text-center">
-                    <div className="text-2xl font-[Manrope] font-bold text-[#6DD4A8]">{userStats.totalPoints.toLocaleString()}</div>
+                  <div className="bg-white/10 rounded-lg p-3 text-center">
+                    <div className="text-xl font-bold text-[#6DD4A8]">{userStats.totalPoints.toLocaleString()}</div>
                     <div className="text-[#A8D5BF] text-xs mt-0.5">Points</div>
                   </div>
-                  <div className="bg-white/10 rounded-xl p-3 text-center">
-                    <div className="text-2xl font-[Manrope] font-bold text-white">#{userRank || "-"}</div>
-                    <div className="text-[#A8D5BF] text-xs mt-0.5">Global rank</div>
+                  <div className="bg-white/10 rounded-lg p-3 text-center">
+                    <div className="text-xl font-bold">#{userRank || "-"}</div>
+                    <div className="text-[#A8D5BF] text-xs mt-0.5">Rank</div>
                   </div>
                 </div>
-                {pointsToNext && userRank && userRank > 1 && (
-                  <div className="mt-4 flex items-center gap-2 bg-white/10 rounded-xl p-3">
+                {userRank && userRank > 1 && leaderboard.length >= userRank - 1 && (
+                  <div className="mt-4 flex items-center gap-2 bg-white/10 rounded-lg p-3">
                     <ArrowUp className="w-4 h-4 text-[#6DD4A8]" />
                     <p className="text-[#A8D5BF] text-xs">
-                      You're <span className="text-white font-semibold">{pointsToNext} points</span> from rank #{userRank - 1}.
+                      {leaderboard[userRank - 2]?.total_points - userStats.totalPoints || 0} points to rank #{userRank - 1}
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Trending skills */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-all duration-300 ease-out motion-reduce:transition-none hover:shadow-[0_10px_24px_rgba(15,61,46,0.10)]">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="w-5 h-5 text-[#2F8F6B]" />
-                <h3 className="font-[Manrope] font-bold text-[#0F3D2E]">Trending Skills</h3>
+            {/* Trending Skills - Marked as Beta Preview */}
+            <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-[#2F8F6B]" />
+                  <h3 className="font-semibold text-slate-900 dark:text-white">Trending Skills</h3>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1E3B34] text-slate-500 dark:text-[#94C8AF] font-medium">
+                  Demo
+                </span>
               </div>
               <div className="space-y-2.5">
                 {[
-                  { skill: "Urban Farming", count: 4200, delta: "+12%" },
-                  { skill: "Solar Installation", count: 3100, delta: "+8%" },
-                  { skill: "GIS Mapping", count: 2800, delta: "+24%" },
-                  { skill: "Composting", count: 2400, delta: "+5%" },
-                  { skill: "Community Organising", count: 1900, delta: "+18%" },
+                  { skill: "Urban Farming", pct: 100 },
+                  { skill: "Solar Installation", pct: 74 },
+                  { skill: "GIS Mapping", pct: 67 },
+                  { skill: "Composting", pct: 57 },
+                  { skill: "Community Organizing", pct: 45 },
                 ].map((item) => (
-                  <div key={item.skill} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-sm text-gray-700 truncate">{item.skill}</span>
-                    </div>
+                  <div key={item.skill} className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-slate-700 dark:text-[#BEEBD7] truncate">{item.skill}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <div className="h-1.5 w-16 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-16 bg-slate-100 dark:bg-[#0D1F18] rounded-full overflow-hidden">
                         <div
                           className="h-full bg-[#2F8F6B] rounded-full"
-                          style={{ width: `${(item.count / 4200) * 100}%` }}
+                          style={{ width: `${item.pct}%` }}
                         />
                       </div>
-                      <span className="text-xs font-semibold text-[#2F8F6B] w-10 text-right">{item.delta}</span>
                     </div>
                   </div>
                 ))}
               </div>
+              <p className="text-[10px] text-slate-400 dark:text-[#6B8F7F] mt-3 text-center">
+                Live data will appear after launch
+              </p>
             </div>
-          </div>
+          </aside>
         </div>
-      </div>
+      </main>
 
-      {/* Challenge details drawer */}
+      {/* ══════════════════════════════════════════════════════════════════════════════
+          CHALLENGE DETAILS DRAWER
+      ══════════════════════════════════════════════════════════════════════════════ */}
       {selectedChallenge && (
         <div className="fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/30 transition-opacity duration-200 ease-out motion-reduce:transition-none"
+            className="absolute inset-0 bg-black/30"
             onClick={() => setSelectedChallenge(null)}
             role="button"
-            aria-label="Close challenge details"
+            aria-label="Close"
           />
-          <div className="absolute right-0 top-0 h-full w-full sm:w-[460px] bg-white shadow-2xl border-l border-gray-100 overflow-y-auto transition-transform duration-200 ease-out motion-reduce:transition-none">
-            <div className="p-5 border-b border-gray-100">
+          <div className="absolute right-0 top-0 h-full w-full sm:w-[420px] bg-white dark:bg-[#132B23] shadow-2xl overflow-y-auto">
+            <div className="p-5 border-b border-slate-200 dark:border-[#1E3B34]">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Challenge details</p>
-                  <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mt-1 truncate">
+                <div>
+                  <p className="text-xs font-medium text-slate-500 dark:text-[#94C8AF] uppercase tracking-wide mb-1">
+                    Challenge Details
+                  </p>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                     {selectedChallenge.title}
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {(selectedChallenge.category ?? "General")} · {(selectedChallenge.difficulty ?? "Beginner")}
-                  </p>
                 </div>
                 <button
                   onClick={() => setSelectedChallenge(null)}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:border-gray-300"
+                  className="p-2 rounded-lg border border-slate-200 dark:border-[#1E3B34] text-slate-500 dark:text-[#94C8AF] hover:bg-slate-50 dark:hover:bg-[#1E3B34] transition-colors min-h-[40px] min-w-[40px]"
+                  aria-label="Close"
                 >
-                  Close
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             <div className="p-5 space-y-5">
-              <div className="rounded-2xl overflow-hidden border border-gray-100">
-                <img
-                  src={
-                    selectedChallenge.banner_url ||
-                    "https://images.unsplash.com/photo-1759503407810-f0402fd9f237?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=900"
-                  }
-                  alt={selectedChallenge.title}
-                  className="w-full h-44 object-cover"
-                  loading="lazy"
-                  decoding="async"
-                />
+              {/* Category + Level */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${getCategoryColor(selectedChallenge.category)}`}>
+                  {getCategoryIcon(selectedChallenge.category)}
+                  {selectedChallenge.category || "General"}
+                </span>
+                <span className="text-xs text-slate-400 dark:text-[#6B8F7F]">
+                  {selectedChallenge.difficulty || "Beginner"}
+                </span>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-700 leading-relaxed">{selectedChallenge.description}</p>
-              </div>
+              {/* Description */}
+              <p className="text-sm text-slate-600 dark:text-[#94C8AF] leading-relaxed">
+                {selectedChallenge.description}
+              </p>
 
+              {/* Stats grid */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-[#F9FDFB] border border-gray-100 rounded-2xl p-3">
-                  <p className="text-xs text-gray-400">Participants</p>
-                  <p className="text-sm font-bold text-[#0F3D2E] mt-0.5">
-                    {selectedChallenge.participant_count.toLocaleString()}
+                <div className="bg-slate-50 dark:bg-[#0D1F18] rounded-lg p-3 text-center">
+                  <p className="text-xs text-slate-400 dark:text-[#6B8F7F]">Participants</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                    {(selectedChallenge.participant_count || 0).toLocaleString()}
                   </p>
                 </div>
-                <div className="bg-[#F9FDFB] border border-gray-100 rounded-2xl p-3">
-                  <p className="text-xs text-gray-400">Time left</p>
-                  <p className="text-sm font-bold text-[#0F3D2E] mt-0.5">
+                <div className="bg-slate-50 dark:bg-[#0D1F18] rounded-lg p-3 text-center">
+                  <p className="text-xs text-slate-400 dark:text-[#6B8F7F]">Time left</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
                     {getDaysRemaining(selectedChallenge.deadline)}d
                   </p>
                 </div>
-                <div className="bg-[#F9FDFB] border border-gray-100 rounded-2xl p-3">
-                  <p className="text-xs text-gray-400">Reward</p>
-                  <p className="text-sm font-bold text-[#2F8F6B] mt-0.5">+{selectedChallenge.points_reward} points</p>
+                <div className="bg-slate-50 dark:bg-[#0D1F18] rounded-lg p-3 text-center">
+                  <p className="text-xs text-slate-400 dark:text-[#6B8F7F]">Reward</p>
+                  <p className="text-sm font-bold text-[#2F8F6B] mt-0.5">
+                    +{selectedChallenge.points_reward || 0}
+                  </p>
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-100 rounded-2xl p-4">
-                <p className="text-sm font-semibold text-[#0F3D2E]">How to complete</p>
-                <ul className="mt-2 space-y-2 text-sm text-gray-600">
+              {/* How to complete */}
+              <div className="bg-slate-50 dark:bg-[#0D1F18] rounded-lg p-4">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white mb-2">How to complete</p>
+                <ol className="space-y-2 text-sm text-slate-600 dark:text-[#94C8AF]">
                   <li className="flex gap-2">
                     <span className="text-[#2F8F6B] font-bold">1.</span>
-                    Do the action in real life (safely, locally, and respectfully).
+                    Do the action in real life.
                   </li>
                   <li className="flex gap-2">
                     <span className="text-[#2F8F6B] font-bold">2.</span>
-                    Upload a proof photo and optional reflection.
+                    Upload a proof photo.
                   </li>
                   <li className="flex gap-2">
                     <span className="text-[#2F8F6B] font-bold">3.</span>
-                    Earn points and appear on the community feed and leaderboard.
+                    Earn points and appear on the leaderboard.
                   </li>
-                </ul>
+                </ol>
               </div>
 
+              {/* Action buttons */}
               <div className="flex gap-2">
                 {(() => {
                   const status = getChallengeStatus(selectedChallenge.id);
@@ -1181,8 +1171,9 @@ export function CommunityChallenges() {
 
                   if (isCompleted) {
                     return (
-                      <div className="flex-1 py-2 rounded-xl text-sm font-semibold bg-emerald-100 text-emerald-700 flex items-center justify-center gap-1.5">
-                        <CheckCircle className="w-4 h-4" /> Completed
+                      <div className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-1.5">
+                        <CheckCircle className="w-4 h-4" />
+                        Completed
                       </div>
                     );
                   }
@@ -1193,16 +1184,17 @@ export function CommunityChallenges() {
                         <button
                           onClick={() => handleOpenSubmissionModal(selectedChallenge)}
                           disabled={!user}
-                          className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#f5a623] text-[#1a3a2a] hover:bg-[#d4891f] transition-colors disabled:opacity-50"
+                          className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50 min-h-[44px]"
                         >
-                          <span className="flex items-center justify-center gap-1.5">
-                            <Camera className="w-4 h-4" /> Continue
+                          <span className="inline-flex items-center justify-center gap-1.5">
+                            <Camera className="w-4 h-4" />
+                            Submit Proof
                           </span>
                         </button>
                         <button
                           onClick={() => handleJoin(selectedChallenge.id)}
                           disabled={!user || joiningId === selectedChallenge.id}
-                          className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition-colors text-sm"
+                          className="px-4 py-2.5 rounded-lg border border-slate-200 dark:border-[#1E3B34] text-slate-500 dark:text-[#94C8AF] hover:border-red-300 hover:text-red-500 transition-colors text-sm min-h-[44px]"
                         >
                           {joiningId === selectedChallenge.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Leave"}
                         </button>
@@ -1212,17 +1204,21 @@ export function CommunityChallenges() {
 
                   return (
                     <button
-                      onClick={() => handleJoin(selectedChallenge.id)}
-                      disabled={!user || joiningId === selectedChallenge.id}
-                      className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-colors disabled:opacity-50"
+                      onClick={() => user ? handleJoin(selectedChallenge.id) : null}
+                      disabled={joiningId === selectedChallenge.id}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-[#0F3D2E] text-white hover:bg-[#2F8F6B] transition-colors disabled:opacity-50 min-h-[44px]"
                     >
-                      {joiningId === selectedChallenge.id ? (
-                        <span className="flex items-center justify-center gap-1.5">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        </span>
+                      {!user ? (
+                        <Link to="/auth" className="inline-flex items-center justify-center gap-1.5 w-full">
+                          <LogIn className="w-4 h-4" />
+                          Sign in to Join
+                        </Link>
+                      ) : joiningId === selectedChallenge.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                       ) : (
-                        <span className="flex items-center justify-center gap-1.5">
-                          <Plus className="w-4 h-4" /> Join Challenge
+                        <span className="inline-flex items-center justify-center gap-1.5">
+                          <Plus className="w-4 h-4" />
+                          Join Challenge
                         </span>
                       )}
                     </button>

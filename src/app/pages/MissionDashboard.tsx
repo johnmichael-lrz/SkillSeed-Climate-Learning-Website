@@ -633,7 +633,7 @@ export function MissionDashboard() {
               </button>
             )}
 
-            {/* ─────────────────────────────────────────────────────────────────────
+            {/* ────────────────────────────────────────────────────────────────���────
                 Results Count
             ───────────────────────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between">
@@ -681,42 +681,34 @@ export function MissionDashboard() {
                     >
                       {/* Card header with icon */}
                       <div
-                        className={`relative h-28 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(mission.focus_area)}`}
+                        className={`relative h-24 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(mission.focus_area)}`}
                       >
-                        <div className="w-12 h-12 rounded-xl bg-white/80 dark:bg-[#0D1F18]/80 backdrop-blur-sm flex items-center justify-center text-[#0F3D2E] dark:text-[#6DD4A8] shadow-sm">
+                        <div className="w-11 h-11 rounded-lg bg-white/80 dark:bg-[#0D1F18]/80 backdrop-blur-sm flex items-center justify-center text-[#0F3D2E] dark:text-[#6DD4A8] shadow-sm">
                           {getCategoryIcon(mission.focus_area)}
                         </div>
-                        {/* Badges */}
-                        <div className="absolute top-3 left-3 flex gap-2">
-                          {mission.type === "urgent" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-500 text-white text-[10px] font-bold uppercase tracking-wide">
-                              <Zap className="w-3 h-3" />
-                              Urgent
-                            </span>
-                          )}
-                          {!mission.location && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-900/60 text-white text-[10px] font-medium">
-                              <Globe className="w-3 h-3" />
-                              Remote
-                            </span>
-                          )}
-                        </div>
-                        {/* Category label */}
-                        <span className="absolute top-3 right-3 px-2 py-1 rounded-full bg-white/90 dark:bg-[#0D1F18]/90 text-slate-700 dark:text-[#BEEBD7] text-[10px] font-medium">
-                          {mission.focus_area?.[0] || "Project"}
-                        </span>
+                        {/* Urgent badge only */}
+                        {mission.type === "urgent" && (
+                          <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-semibold uppercase tracking-wide">
+                            <Zap className="w-2.5 h-2.5" />
+                            Urgent
+                          </span>
+                        )}
                       </div>
 
                       {/* Card body */}
                       <div className="p-4 flex flex-col flex-1">
-                        {/* Org line */}
-                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#6B8F7F] mb-2">
-                          <span className="truncate">{posterInfo?.name || "Community"}</span>
-                          {posterInfo?.verified && (
-                            <span className="inline-flex items-center gap-0.5 text-[#2F8F6B] dark:text-[#6DD4A8]">
-                              <CheckCircle2 className="w-3 h-3" />
-                            </span>
-                          )}
+                        {/* Category chip + org */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-[#1E3B34] text-slate-600 dark:text-[#94C8AF] text-[10px] font-medium">
+                            {mission.focus_area?.[0] || "Project"}
+                          </span>
+                          <span className="text-[10px] text-slate-400 dark:text-[#6B8F7F]">by</span>
+                          <span className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-[#6B8F7F] truncate">
+                            {posterInfo?.name || "Community"}
+                            {posterInfo?.verified && (
+                              <CheckCircle2 className="w-2.5 h-2.5 text-[#2F8F6B] dark:text-[#6DD4A8]" />
+                            )}
+                          </span>
                         </div>
 
                         {/* Title */}
@@ -724,16 +716,13 @@ export function MissionDashboard() {
                           {mission.title}
                         </h3>
 
-                        {/* Meta row */}
-                        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-[#6B8F7F] mb-3">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {mission.location || "Remote"}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {mission.duration || "Flexible"}
-                          </span>
+                        {/* Meta row: Location - Duration */}
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-[#6B8F7F] mb-3">
+                          <MapPin className="w-3 h-3 flex-shrink-0" />
+                          <span>{mission.location || "Remote"}</span>
+                          <span className="text-slate-300 dark:text-[#1E3B34]">-</span>
+                          <Clock className="w-3 h-3 flex-shrink-0" />
+                          <span>{mission.duration || "Flexible"}</span>
                         </div>
 
                         {/* Slots needed */}

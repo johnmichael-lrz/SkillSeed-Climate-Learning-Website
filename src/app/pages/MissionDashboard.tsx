@@ -697,7 +697,7 @@ export function MissionDashboard() {
                   </button>
                 ) : (
                   <Link
-                    to={user ? "/projects/new" : "/auth"}
+                    to={user ? "/post-project" : "/auth"}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0F3D2E] text-white text-sm font-medium rounded-lg hover:bg-[#1a5241] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2F8F6B] focus-visible:ring-offset-2"
                   >
                     <Plus className="w-4 h-4" />

@@ -153,17 +153,8 @@ function LeaderboardSkeleton() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// LEADERBOARD CARD - Honest pre-launch state with optional demo toggle
+// LEADERBOARD CARD - Honest beta state (no fake data)
 // ══════════════════════════════════════════════════════════════════════════════
-
-// Demo data for optional preview (clearly labeled)
-const DEMO_LEADERBOARD: LeaderboardEntry[] = [
-  { user_id: "demo-1", name: "Demo User A", total_points: 1250, missions_completed: 8, avatar_url: null },
-  { user_id: "demo-2", name: "Demo User B", total_points: 980, missions_completed: 6, avatar_url: null },
-  { user_id: "demo-3", name: "Demo User C", total_points: 750, missions_completed: 5, avatar_url: null },
-  { user_id: "demo-4", name: "Demo User D", total_points: 520, missions_completed: 4, avatar_url: null },
-  { user_id: "demo-5", name: "Demo User E", total_points: 340, missions_completed: 3, avatar_url: null },
-];
 
 interface LeaderboardCardProps {
   leaderboard: LeaderboardEntry[];
@@ -173,12 +164,10 @@ interface LeaderboardCardProps {
 }
 
 function LeaderboardCard({ leaderboard, leaderboardLoading, userProfileId, user }: LeaderboardCardProps) {
-  const [showDemo, setShowDemo] = useState(false);
   const [scoringExpanded, setScoringExpanded] = useState(false);
 
-  // Use real data if available, otherwise show empty or demo based on toggle
+  // Only show real Supabase data
   const hasRealData = leaderboard.length > 0;
-  const displayData = hasRealData ? leaderboard : showDemo ? DEMO_LEADERBOARD : [];
 
   return (
     <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-5">
@@ -189,22 +178,20 @@ function LeaderboardCard({ leaderboard, leaderboardLoading, userProfileId, user 
           <h3 className="font-semibold text-slate-900 dark:text-white">Leaderboard</h3>
           {leaderboardLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
         </div>
-        {showDemo && !hasRealData && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium">
-            Demo data
-          </span>
-        )}
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8F5EF] dark:bg-[#1E3B34] text-[#2F8F6B] dark:text-[#6DD4A8] font-semibold">
+          Beta
+        </span>
       </div>
 
-      {/* Empty state (pre-launch) */}
-      {!hasRealData && !showDemo ? (
+      {/* Empty state (beta - no fake data) */}
+      {!hasRealData ? (
         <div className="text-center py-4">
           <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-[#1E3B34] flex items-center justify-center mx-auto mb-3">
             <Award className="w-6 h-6 text-slate-400 dark:text-[#6DD4A8]" />
           </div>
-          <p className="text-sm font-medium text-slate-900 dark:text-white mb-1">Leaderboard</p>
+          <p className="text-sm font-medium text-slate-900 dark:text-white mb-1">No rankings yet (beta)</p>
           <p className="text-xs text-slate-500 dark:text-[#94C8AF] mb-4">
-            Rankings will appear after launch.
+            Be the first to complete a challenge and appear here.
           </p>
 
           {/* How scoring works - expandable */}
@@ -244,7 +231,7 @@ function LeaderboardCard({ leaderboard, leaderboardLoading, userProfileId, user 
               className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-[#0F3D2E] text-white text-sm font-medium hover:bg-[#2F8F6B] transition-colors"
             >
               <Target className="w-4 h-4" />
-              Join the first challenge
+              Join a challenge
             </Link>
           ) : (
             <Link
@@ -255,81 +242,60 @@ function LeaderboardCard({ leaderboard, leaderboardLoading, userProfileId, user 
               Sign in to join
             </Link>
           )}
-
-          {/* Demo toggle */}
-          <button
-            onClick={() => setShowDemo(true)}
-            className="mt-3 text-xs text-slate-400 dark:text-[#6B8F7F] hover:text-slate-600 dark:hover:text-[#94C8AF] transition-colors"
-          >
-            Show demo leaderboard
-          </button>
         </div>
       ) : (
-        /* Real or demo leaderboard data */
-        <div>
-          <div className="space-y-2.5">
-            {displayData.map((entry, index) => {
-              const rank = index + 1;
-              const isYou = entry.user_id === userProfileId;
-              const isDemo = !hasRealData && showDemo;
-              return (
+        /* Real leaderboard data from Supabase */
+        <div className="space-y-2.5">
+          {leaderboard.map((entry, index) => {
+            const rank = index + 1;
+            const isYou = entry.user_id === userProfileId;
+            return (
+              <div
+                key={entry.user_id}
+                className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                  isYou
+                    ? "bg-[#E6F4EE] dark:bg-[#1E3B34] border border-[#2F8F6B]/20"
+                    : "hover:bg-slate-50 dark:hover:bg-[#1E3B34]/50"
+                }`}
+              >
                 <div
-                  key={entry.user_id}
-                  className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
-                    isYou
-                      ? "bg-[#E6F4EE] dark:bg-[#1E3B34] border border-[#2F8F6B]/20"
-                      : "hover:bg-slate-50 dark:hover:bg-[#1E3B34]/50"
-                  } ${isDemo ? "opacity-70" : ""}`}
+                  className={`w-6 text-center text-sm font-bold flex-shrink-0 ${
+                    rank === 1 ? "text-amber-500" : rank === 2 ? "text-slate-400" : rank === 3 ? "text-amber-700" : "text-slate-400"
+                  }`}
                 >
+                  {rank}
+                </div>
+                {entry.avatar_url ? (
+                  <img
+                    src={entry.avatar_url}
+                    alt={entry.name || "User"}
+                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
                   <div
-                    className={`w-6 text-center text-sm font-bold flex-shrink-0 ${
-                      rank === 1 ? "text-amber-500" : rank === 2 ? "text-slate-400" : rank === 3 ? "text-amber-700" : "text-slate-400"
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      isYou ? "bg-[#2F8F6B] text-white" : "bg-slate-100 dark:bg-[#0D1F18] text-slate-600 dark:text-[#BEEBD7]"
                     }`}
                   >
-                    {rank}
+                    {getInitials(entry.name)}
                   </div>
-                  {entry.avatar_url ? (
-                    <img
-                      src={entry.avatar_url}
-                      alt={entry.name || "User"}
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                        isYou ? "bg-[#2F8F6B] text-white" : "bg-slate-100 dark:bg-[#0D1F18] text-slate-600 dark:text-[#BEEBD7]"
-                      }`}
-                    >
-                      {getInitials(entry.name)}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{entry.name}</p>
-                      {isYou && <span className="text-xs text-[#2F8F6B]">(You)</span>}
-                    </div>
-                    <p className="text-xs text-slate-400 dark:text-[#6B8F7F]">
-                      {entry.missions_completed || 0} completed
-                    </p>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{entry.name}</p>
+                    {isYou && <span className="text-xs text-[#2F8F6B]">(You)</span>}
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{entry.total_points.toLocaleString()}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-[#6B8F7F]">pts</p>
-                  </div>
+                  <p className="text-xs text-slate-400 dark:text-[#6B8F7F]">
+                    {entry.missions_completed || 0} completed
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Hide demo button when showing demo */}
-          {!hasRealData && showDemo && (
-            <button
-              onClick={() => setShowDemo(false)}
-              className="mt-3 w-full text-xs text-slate-400 dark:text-[#6B8F7F] hover:text-slate-600 dark:hover:text-[#94C8AF] transition-colors"
-            >
-              Hide demo leaderboard
-            </button>
-          )}
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{entry.total_points.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-[#6B8F7F]">pts</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1243,7 +1209,7 @@ export function CommunityChallenges() {
         </div>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────
+      {/* ─────────────────────��───────────────────────────────────────────────
           Challenge Details Drawer
       ────────────��────────────────────────���─────────────────────────────── */}
       {selectedChallenge && (

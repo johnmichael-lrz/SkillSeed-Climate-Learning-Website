@@ -289,8 +289,7 @@ export function HandsOnQuests() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#2F8F6B] dark:text-[#6DD4A8] mb-1 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5" />
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#2F8F6B] dark:text-[#6DD4A8] mb-1">
                 Hands-on Learning
               </p>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white" style={{ fontFamily: "'Manrope', sans-serif" }}>
@@ -479,7 +478,7 @@ export function HandsOnQuests() {
 
         {/* ─────────────────────────────────────────────────────────────────────
             Sign-in prompt for guests
-        ───────────────────────────────────────────────────────────────────── */}
+        ──────────────────────────────────��────────────────────────────────── */}
         {!user && (
           <div className="bg-white dark:bg-[#132B23] rounded-xl border border-slate-200 dark:border-[#1E3B34] p-6 text-center">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">

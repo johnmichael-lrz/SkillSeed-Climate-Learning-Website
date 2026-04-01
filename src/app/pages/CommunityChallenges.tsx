@@ -565,7 +565,7 @@ export function CommunityChallenges() {
   // ══════════════════════════════════════════════════════════════════════════════
   // FILTER & SORT CHALLENGES
   // Key: Filter out expired (0 days left) and invalid titles
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════��═══════════════════════════════════════════════════════
 
   const categories = useMemo(() => {
     const cats = new Set(challenges.map((c) => c.category || "General"));
@@ -743,8 +743,7 @@ export function CommunityChallenges() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#2F8F6B] dark:text-[#6DD4A8] mb-1 flex items-center gap-1.5">
-                <Trophy className="w-3.5 h-3.5" />
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#2F8F6B] dark:text-[#6DD4A8] mb-1">
                 Community Challenges
               </p>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white" style={{ fontFamily: "'Manrope', sans-serif" }}>
@@ -1246,7 +1245,7 @@ export function CommunityChallenges() {
 
       {/* ─────────────────────────────────────────────────────────────────────
           Challenge Details Drawer
-      ───────────────────────────────────────────────────────────────────── */}
+      ────────────��──────────────────────────────────────────────────────── */}
       {selectedChallenge && (
         <div className="fixed inset-0 z-50">
           <div

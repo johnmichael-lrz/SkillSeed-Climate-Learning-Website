@@ -565,7 +565,7 @@ export function CommunityChallenges() {
   // ══════════════════════════════════════════════════════════════════════════════
   // FILTER & SORT CHALLENGES
   // Key: Filter out expired (0 days left) and invalid titles
-  // ══════════════════════��═══════════════════════════════════════════════════════
+  // ══════════════════════���═══════════════════════════════════════════════════════
 
   const categories = useMemo(() => {
     const cats = new Set(challenges.map((c) => c.category || "General"));
@@ -767,14 +767,14 @@ export function CommunityChallenges() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
         {/* ─────────────────────────────────────────────────────────────────────
-            KPI Strip (honest beta pattern)
+            KPI Strip (honest beta pattern - no fake usage numbers)
         ───────────────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { icon: Users, label: "Members", value: communityStats.totalChallengers, isBeta: true },
-            { icon: Target, label: "Active", value: communityStats.activeChallenges, isBeta: true },
-            { icon: Leaf, label: "Actions", value: communityStats.totalActions, isBeta: true },
-            { icon: Trophy, label: "Challenges Listed", value: filteredChallenges.length, isBeta: false },
+            { icon: Users, label: "Members", isBeta: true },
+            { icon: Target, label: "Active", isBeta: true },
+            { icon: Leaf, label: "Actions", isBeta: true },
+            { icon: Trophy, label: "Challenges", value: filteredChallenges.length, isBeta: false },
           ].map(({ icon: Icon, label, value, isBeta }) => (
             <div
               key={label}
@@ -790,9 +790,9 @@ export function CommunityChallenges() {
                 )}
               </p>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                {isBeta && value === 0 ? "—" : value.toLocaleString()}
+                {isBeta ? "—" : (value ?? 0).toLocaleString()}
               </p>
-              {isBeta && value === 0 && (
+              {isBeta && (
                 <p className="text-[10px] text-slate-400 dark:text-[#6B8F7F] mt-0.5">Live after launch</p>
               )}
             </div>
@@ -1245,7 +1245,7 @@ export function CommunityChallenges() {
 
       {/* ─────────────────────────────────────────────────────────────────────
           Challenge Details Drawer
-      ────────────��──────────────────────────────────────────────────────── */}
+      ────────────��────────────────────────���─────────────────────────────── */}
       {selectedChallenge && (
         <div className="fixed inset-0 z-50">
           <div

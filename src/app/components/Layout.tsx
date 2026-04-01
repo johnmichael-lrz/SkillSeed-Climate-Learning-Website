@@ -2,6 +2,8 @@ import { Outlet, useLocation } from "react-router";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
+import { ConfigError } from "./ConfigError";
+import { isSupabaseConfigured } from "../utils/supabase";
 
 export function Layout() {
   const location = useLocation();
@@ -12,7 +14,7 @@ export function Layout() {
       <Navbar />
       <ScrollToTop />
       <main className="flex-1">
-        <Outlet />
+        {isSupabaseConfigured ? <Outlet /> : <ConfigError />}
       </main>
       {!hideFooter && <Footer />}
     </div>

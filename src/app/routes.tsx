@@ -7,6 +7,7 @@ import { ProgressTracker } from "./pages/ProgressTracker";
 import { CommunityChallenges } from "./pages/CommunityChallenges";
 import { AuthPage } from "./pages/AuthPage";
 import { AuthCallback } from "./pages/AuthCallback";
+import { ResetPassword } from "./pages/ResetPassword";
 import { PostProject } from "./pages/PostProject";
 import { FundingResources } from "./pages/FundingResources";
 import { EditFunding } from "./pages/EditFunding";
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
       { path: "community", Component: CommunityChallenges },
       { path: "auth", Component: AuthPage },
       { path: "auth/callback", Component: AuthCallback },
+      { path: "reset-password", Component: ResetPassword },
       { path: "post-project", Component: PostProject },
       { path: "funding", Component: FundingResources },
       { path: "edit-funding/:fundingId", Component: EditFunding },

@@ -27,6 +27,7 @@ import {
   Globe,
   CheckCircle2,
   RefreshCw,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { getProjects, getMyProjects, deleteProject, getMatchingProjects } from "../utils/matchService";

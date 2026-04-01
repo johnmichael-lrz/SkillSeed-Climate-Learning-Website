@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import {
-  Eye, EyeOff, Sprout, Wrench, Building2, Leaf, ArrowLeft, Loader2,
+  Eye, EyeOff, Sprout, Wrench, Building2, Leaf, ArrowLeft, Loader2, Mail, CheckCircle,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { isSupabaseConfigured } from "../utils/supabase";
+import { ConfigError } from "../components/ui/config-error";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -64,10 +66,20 @@ const ROLES = [
 export function AuthPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signUp, signIn, signInWithGoogle } = useAuth();
+  const { signUp, signIn, signInWithGoogle, resetPassword } = useAuth();
 
   // UI state
   const [tab, setTab] = useState<"signup" | "login">("signup");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+
+  // Check if supabase is configured
+  if (!isSupabaseConfigured) {
+    return <ConfigError />;
+  }
 
   // Read tab from URL on mount
   useEffect(() => {
@@ -161,6 +173,23 @@ export function AuthPage() {
       setError(error.message);
     }
     // On success Supabase handles the redirect
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    
+    setForgotLoading(true);
+    setForgotError(null);
+    
+    const { error } = await resetPassword(forgotEmail);
+    
+    setForgotLoading(false);
+    if (error) {
+      setForgotError(error.message);
+    } else {
+      setForgotSuccess(true);
+    }
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────────
@@ -650,7 +679,14 @@ export function AuthPage() {
                     className="rounded" />
                   Remember me
                 </label>
-                <Link to="/" className="text-xs" style={{ color: "#2F8F6B", fontWeight: 600 }}>Forgot password?</Link>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowForgotPassword(true); setForgotError(null); setForgotSuccess(false); setForgotEmail(""); }}
+                  className="text-xs" 
+                  style={{ color: "#2F8F6B", fontWeight: 600 }}
+                >
+                  Forgot password?
+                </button>
               </div>
 
               <button
@@ -692,6 +728,99 @@ export function AuthPage() {
 
         </div>
       </div>
+
+      {/* ═══ FORGOT PASSWORD MODAL ═══ */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md bg-white dark:bg-[#132B23] rounded-2xl p-6 shadow-xl">
+            {forgotSuccess ? (
+              // Success state
+              <div className="text-center py-4">
+                <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-[#E6F4EE] dark:bg-[#1E3B34] flex items-center justify-center">
+                  <CheckCircle className="w-7 h-7 text-[#2F8F6B]" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                  Check your email
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                  We sent a password reset link to <strong>{forgotEmail}</strong>. 
+                  Click the link in the email to reset your password.
+                </p>
+                <button
+                  onClick={() => { setShowForgotPassword(false); setForgotSuccess(false); }}
+                  className="w-full py-3 rounded-xl text-white font-semibold"
+                  style={{ background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)" }}
+                >
+                  Back to Login
+                </button>
+              </div>
+            ) : (
+              // Form state
+              <form onSubmit={handleForgotPassword}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Reset Password
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(false)}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                  Enter your email address and we will send you a link to reset your password.
+                </p>
+
+                {forgotError && (
+                  <div className="mb-4 p-3 rounded-xl text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
+                    {forgotError}
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm border border-slate-200 dark:border-[#1E3B34] bg-white dark:bg-[#0D1F18] text-slate-900 dark:text-white outline-none focus:border-[#2F8F6B] dark:focus:border-[#6DD4A8]"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={forgotLoading || !forgotEmail}
+                  className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)" }}
+                >
+                  {forgotLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Send Reset Link"
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(false)}
+                  className="w-full mt-3 py-2.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  Back to Login
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

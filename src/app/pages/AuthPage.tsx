@@ -6,6 +6,10 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { isSupabaseConfigured } from "../utils/supabase";
 import { ConfigError } from "../components/ui/config-error";
+import {
+  validateFullName, validateEmail, validatePassword, validateRegion,
+  validateSignupForm,
+} from "../utils/validation";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -76,11 +80,6 @@ export function AuthPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
 
-  // Check if supabase is configured
-  if (!isSupabaseConfigured) {
-    return <ConfigError />;
-  }
-
   // Read tab from URL on mount
   useEffect(() => {
     const urlTab = searchParams.get("tab");
@@ -107,9 +106,17 @@ export function AuthPage() {
     subRole: "volunteer", location: "", availability: "",
   });
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldTouched, setFieldTouched] = useState<Record<string, boolean>>({});
+
   const [loginData, setLoginData] = useState({
     email: "", password: "", remember: false,
   });
+
+  // Check if supabase is configured (placed AFTER all hooks to obey Rules of Hooks)
+  if (!isSupabaseConfigured) {
+    return <ConfigError />;
+  }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -121,6 +128,62 @@ export function AuthPage() {
     setSelectedInterests(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
   const toggleFocus = (a: string) =>
     setSelectedFocus(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
+
+  // ── Real-time field validation ────────────────────────────────────────────────
+  const validators: Record<string, (v: string) => string | null> = {
+    name: validateFullName,
+    email: validateEmail,
+    password: validatePassword,
+    region: validateRegion,
+  };
+
+  const handleFieldChange = (field: string, value: string) => {
+    setForm(f => ({ ...f, [field]: value }));
+    // Only show/clear errors for fields the user has already interacted with
+    if (fieldTouched[field]) {
+      const validator = validators[field];
+      if (validator) {
+        const err = validator(value);
+        setFieldErrors(prev => {
+          const next = { ...prev };
+          if (err) next[field] = err;
+          else delete next[field];
+          return next;
+        });
+      }
+    }
+  };
+
+  const handleFieldBlur = (field: string) => {
+    setFieldTouched(prev => ({ ...prev, [field]: true }));
+    const validator = validators[field];
+    if (validator) {
+      const err = validator(form[field as keyof typeof form] as string);
+      setFieldErrors(prev => {
+        const next = { ...prev };
+        if (err) next[field] = err;
+        else delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleContinueToStep3 = () => {
+    // Mark all fields as touched so errors show
+    setFieldTouched({ name: true, email: true, password: true, region: true });
+    const errors = validateSignupForm(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length === 0) {
+      setStep(3);
+    }
+  };
+
+  /** Returns the border color style based on validation state */
+  const fieldBorderColor = (field: string): string => {
+    if (fieldErrors[field]) return "#EF4444";           // red for error
+    if (fieldTouched[field] && !fieldErrors[field]) return "#2F8F6B"; // green for valid
+    return "#E5E7EB";                                    // default gray
+  };
 
   // ── Backend handlers (from original) ─────────────────────────────────────────
 
@@ -421,37 +484,37 @@ export function AuthPage() {
               </p>
 
               <div className="space-y-3">
-                <Field label="Full Name">
+                <Field label="Full Name" error={fieldErrors.name}>
                   <input type="text" placeholder="Your full name" value={form.name}
-                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    onFocus={focusStyle} onBlur={blurStyle}
+                    onChange={e => handleFieldChange('name', e.target.value)}
+                    onBlur={() => handleFieldBlur('name')}
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                    style={inputStyle} />
+                    style={{ ...inputStyle, borderColor: fieldBorderColor('name') }} />
                 </Field>
-                <Field label="Email Address">
+                <Field label="Email Address" error={fieldErrors.email}>
                   <input type="email" placeholder="you@example.com" value={form.email}
-                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                    onFocus={focusStyle} onBlur={blurStyle}
+                    onChange={e => handleFieldChange('email', e.target.value)}
+                    onBlur={() => handleFieldBlur('email')}
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                    style={inputStyle} />
+                    style={{ ...inputStyle, borderColor: fieldBorderColor('email') }} />
                 </Field>
-                <Field label="Password">
+                <Field label="Password" error={fieldErrors.password}>
                   <div className="relative">
                     <input type={showPass ? "text" : "password"} placeholder="Min. 8 characters" value={form.password}
-                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                      onFocus={focusStyle} onBlur={blurStyle}
+                      onChange={e => handleFieldChange('password', e.target.value)}
+                      onBlur={() => handleFieldBlur('password')}
                       className="w-full px-4 py-3 rounded-xl text-sm outline-none pr-10"
-                      style={inputStyle} />
+                      style={{ ...inputStyle, borderColor: fieldBorderColor('password') }} />
                     <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2">
                       {showPass ? <EyeOff className="w-4 h-4" style={{ color: "#9CA3AF" }} /> : <Eye className="w-4 h-4" style={{ color: "#9CA3AF" }} />}
                     </button>
                   </div>
                 </Field>
-                <Field label="Region">
-                  <select value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
-                    onFocus={focusStyle} onBlur={blurStyle}
+                <Field label="Region" error={fieldErrors.region}>
+                  <select value={form.region} onChange={e => handleFieldChange('region', e.target.value)}
+                    onBlur={() => handleFieldBlur('region')}
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none appearance-none"
-                    style={{ ...inputStyle, color: form.region ? "#374151" : "#9CA3AF" }}>
+                    style={{ ...inputStyle, borderColor: fieldBorderColor('region'), color: form.region ? "#374151" : "#9CA3AF" }}>
                     <option value="">Select region</option>
                     <option>Luzon</option><option>Visayas</option><option>Mindanao</option><option>Other</option>
                   </select>
@@ -459,7 +522,7 @@ export function AuthPage() {
               </div>
 
               <button
-                onClick={() => setStep(3)}
+                onClick={handleContinueToStep3}
                 className="w-full py-3.5 rounded-xl text-white mt-5 transition-all"
                 style={{ background: "linear-gradient(135deg, #0F3D2E 0%, #2F8F6B 100%)", fontWeight: 700, fontFamily: "'Manrope', sans-serif", boxShadow: "0 4px 16px rgba(47,143,107,0.35)" }}
               >
@@ -840,11 +903,16 @@ const blurStyle = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HT
   e.currentTarget.style.borderColor = "#E5E7EB";
 };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-semibold text-foreground mb-1.5">{label}</label>
       {children}
+      {error && (
+        <p className="mt-1 text-xs font-medium" style={{ color: "#EF4444" }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }

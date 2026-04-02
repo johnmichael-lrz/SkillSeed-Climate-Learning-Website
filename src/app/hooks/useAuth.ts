@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
+import { validateSignupForm } from '../utils/validation';
 
 interface AuthState {
   user: User | null;
@@ -54,13 +55,25 @@ export function useAuth() {
 
   const signUp = async (data: SignUpData): Promise<{ error: AuthError | null }> => {
     const { email, password, fullName, region, userType } = data;
-    
+
+    // ── Server-side validation gateway ──
+    const validationErrors = validateSignupForm({
+      name: fullName,
+      email,
+      password,
+      region,
+    });
+    if (Object.keys(validationErrors).length > 0) {
+      const firstError = Object.values(validationErrors)[0];
+      return { error: { message: firstError, name: 'AuthApiError', status: 400 } as AuthError };
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: fullName,
+          full_name: fullName.trim(),
           region,
           user_type: userType,
         },

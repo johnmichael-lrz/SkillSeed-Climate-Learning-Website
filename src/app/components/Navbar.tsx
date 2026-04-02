@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Menu, X, Sprout, ChevronDown, User, LogOut, Moon, Sun } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { useDemoMode } from "../hooks/useDemoMode";
 import { useTheme } from "next-themes";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -14,6 +15,7 @@ const navLinks = [
 
 export function Navbar() {
   const { user, signOut } = useAuth();
+  const { demoMode, enableDemoMode, disableDemoMode } = useDemoMode();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -55,6 +57,11 @@ export function Navbar() {
     signOut();
     setDropdownOpen(false);
     navigate("/");
+  };
+
+  const handleTryDemo = () => {
+    enableDemoMode();
+    navigate("/browse", { replace: false });
   };
 
   return (
@@ -180,6 +187,12 @@ export function Navbar() {
               /* ── LOGGED OUT ── */
               <>
                 <button
+                  onClick={demoMode ? () => { disableDemoMode(); navigate("/", { replace: true }); } : handleTryDemo}
+                  className="min-h-[40px] px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 dark:border-[#1E3B34] bg-white/70 dark:bg-[#132B23] text-slate-700 dark:text-[#BEEBD7] hover:bg-white dark:hover:bg-[#17342B] transition-colors"
+                >
+                  {demoMode ? "Exit demo" : "Try demo"}
+                </button>
+                <button
                   onClick={() => navigate("/auth?tab=login")}
                   className="min-h-[40px] px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted dark:hover:bg-[#17342B] transition-colors"
                 >
@@ -287,6 +300,13 @@ export function Navbar() {
               </>
             ) : (
               <>
+                <button
+                  onClick={() => { handleTryDemo(); setMobileOpen(false); }}
+                  className="text-center px-4 py-2.5 rounded-lg text-sm"
+                  style={{ color: "#0F3D2E", fontWeight: 600, border: "1px solid #E5E7EB" }}
+                >
+                  Try demo
+                </button>
                 <button onClick={() => { navigate("/auth?tab=login"); setMobileOpen(false); }}
                   className="text-center px-4 py-2.5 rounded-lg text-sm"
                   style={{ color: "#0F3D2E", fontWeight: 500, border: "1px solid #E5E7EB" }}>

@@ -21,7 +21,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { getProjectById, applyToProject, getConnectionsForProject, updateConnectionStatus, deleteProject } from "../utils/matchService";
+import {
+  getProjectById,
+  getProjects,
+  applyToProject,
+  getConnectionsForProject,
+  updateConnectionStatus,
+  deleteProject,
+} from "../utils/matchService";
 import { supabase } from "../utils/supabase";
 import type { ConnectionStatus, Project, ConnectionWithDetails } from "../types/database";
 
@@ -410,17 +417,17 @@ export function MissionDetail() {
   // Loading state
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-[#F9FDFB] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0D1F18] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-[#2F8F6B]" />
-          <p className="text-gray-500">Loading mission details...</p>
+          <p className="text-slate-500 dark:text-[#94C8AF]">Loading mission details...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FDFB]">
+    <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0D1F18]">
       {/* Hero Image */}
       <div className="relative h-64 md:h-80 overflow-hidden">
         <img src={mission.image} alt={mission.title} className="w-full h-full object-cover" />
@@ -429,7 +436,7 @@ export function MissionDetail() {
           <div className="max-w-7xl mx-auto">
             <Link
               to="/dashboard"
-              className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium mb-3 transition-colors"
+              className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium mb-3 transition-colors min-h-[44px]"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Missions
@@ -461,14 +468,14 @@ export function MissionDetail() {
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Meta card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="bg-white dark:bg-[#132B23] rounded-2xl border border-slate-200 dark:border-[#1E3B34] shadow-sm p-5">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-[#E6F4EE] rounded-xl flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-[#2F8F6B]" />
+                <div className="w-10 h-10 bg-[#E6F4EE] dark:bg-[#1E3B34] rounded-xl flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-[#2F8F6B] dark:text-[#6DD4A8]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-[#0F3D2E]">{mission.org}</p>
-                  <p className="text-xs text-gray-500">{mission.orgType}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">{mission.org}</p>
+                  <p className="text-xs text-slate-500 dark:text-[#94C8AF]">{mission.orgType}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -479,72 +486,72 @@ export function MissionDetail() {
                   { icon: <Zap className="w-4 h-4" />, label: "Difficulty", value: mission.difficulty },
                 ].map(item => (
                   <div key={item.label} className="text-center">
-                    <div className="flex items-center justify-center gap-1 text-gray-400 mb-0.5">
+                    <div className="flex items-center justify-center gap-1 text-slate-400 dark:text-[#6B8F7F] mb-0.5">
                       {item.icon}
                       <span className="text-xs">{item.label}</span>
                     </div>
-                    <p className="font-semibold text-[#0F3D2E] text-sm">{item.value}</p>
+                    <p className="font-semibold text-slate-900 dark:text-white text-sm">{item.value}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Description */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mb-4">About this Mission</h2>
-              <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">
+            <div className="bg-white dark:bg-[#132B23] rounded-2xl border border-slate-200 dark:border-[#1E3B34] shadow-sm p-6">
+              <h2 className="font-[Manrope] font-bold text-slate-900 dark:text-white text-xl mb-4">About this Mission</h2>
+              <div className="text-slate-600 dark:text-[#BEEBD7]/85 text-sm leading-relaxed whitespace-pre-line">
                 {mission.description}
               </div>
             </div>
 
             {/* What you'll do */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mb-4">
-                <span className="flex items-center gap-2"><Target className="w-5 h-5 text-[#2F8F6B]" /> What You'll Accomplish</span>
+            <div className="bg-white dark:bg-[#132B23] rounded-2xl border border-slate-200 dark:border-[#1E3B34] shadow-sm p-6">
+              <h2 className="font-[Manrope] font-bold text-slate-900 dark:text-white text-xl mb-4">
+                <span className="flex items-center gap-2"><Target className="w-5 h-5 text-[#2F8F6B] dark:text-[#6DD4A8]" /> What You'll Accomplish</span>
               </h2>
               <ul className="space-y-3">
                 {mission.outcomes.map((outcome: string, i: number) => (
                   <li key={i} className="flex items-start gap-3">
-                    <div className="w-5 h-5 bg-[#E6F4EE] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <CheckCircle className="w-3 h-3 text-[#2F8F6B]" />
+                    <div className="w-5 h-5 bg-[#E6F4EE] dark:bg-[#1E3B34] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle className="w-3 h-3 text-[#2F8F6B] dark:text-[#6DD4A8]" />
                     </div>
-                    <span className="text-gray-600 text-sm">{outcome}</span>
+                    <span className="text-slate-600 dark:text-[#BEEBD7]/85 text-sm">{outcome}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* People needed */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mb-4">
-                <span className="flex items-center gap-2"><Users className="w-5 h-5 text-[#2F8F6B]" /> People Needed</span>
+            <div className="bg-white dark:bg-[#132B23] rounded-2xl border border-slate-200 dark:border-[#1E3B34] shadow-sm p-6">
+              <h2 className="font-[Manrope] font-bold text-slate-900 dark:text-white text-xl mb-4">
+                <span className="flex items-center gap-2"><Users className="w-5 h-5 text-[#2F8F6B] dark:text-[#6DD4A8]" /> People Needed</span>
               </h2>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div className="bg-[#F9FDFB] rounded-xl p-4">
+                <div className="bg-[#F9FAFB] dark:bg-[#0D1F18] rounded-xl p-4 border border-slate-100 dark:border-[#1E3B34]">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-[#0F3D2E] text-sm">Volunteers</span>
-                    <span className="text-sm font-bold text-[#2F8F6B]">{mission.volunteers}/{mission.volunteersNeeded} joined</span>
+                    <span className="font-semibold text-slate-900 dark:text-white text-sm">Volunteers</span>
+                    <span className="text-sm font-bold text-[#2F8F6B] dark:text-[#6DD4A8]">{mission.volunteers}/{mission.volunteersNeeded} joined</span>
                   </div>
-                  <div className="h-2 bg-gray-200 rounded-full mb-3">
+                  <div className="h-2 bg-slate-200 dark:bg-[#1E3B34] rounded-full mb-3">
                     <div className="h-full bg-[#2F8F6B] rounded-full" style={{ width: `${(mission.volunteers / mission.volunteersNeeded) * 100}%` }} />
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {mission.volunteerSkills.map((s: string) => (
-                      <span key={s} className="text-xs bg-[#E6F4EE] text-[#0F3D2E] px-2 py-0.5 rounded-full">{s}</span>
+                      <span key={s} className="text-xs bg-[#E6F4EE] dark:bg-[#1E3B34] text-[#0F3D2E] dark:text-[#BEEBD7] px-2 py-0.5 rounded-full">{s}</span>
                     ))}
                   </div>
                 </div>
-                <div className="bg-[#F9FDFB] rounded-xl p-4">
+                <div className="bg-[#F9FAFB] dark:bg-[#0D1F18] rounded-xl p-4 border border-slate-100 dark:border-[#1E3B34]">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-[#0F3D2E] text-sm">Professionals</span>
-                    <span className="text-sm font-bold text-teal-600">{mission.professionals}/{mission.professionalsNeeded} joined</span>
+                    <span className="font-semibold text-slate-900 dark:text-white text-sm">Professionals</span>
+                    <span className="text-sm font-bold text-teal-600 dark:text-teal-300">{mission.professionals}/{mission.professionalsNeeded} joined</span>
                   </div>
-                  <div className="h-2 bg-gray-200 rounded-full mb-3">
+                  <div className="h-2 bg-slate-200 dark:bg-[#1E3B34] rounded-full mb-3">
                     <div className="h-full bg-teal-500 rounded-full" style={{ width: `${(mission.professionals / mission.professionalsNeeded) * 100}%` }} />
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {mission.professionalSkills.map((s: string) => (
-                      <span key={s} className="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full">{s}</span>
+                      <span key={s} className="text-xs bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-200 px-2 py-0.5 rounded-full">{s}</span>
                     ))}
                   </div>
                 </div>
@@ -552,8 +559,8 @@ export function MissionDetail() {
             </div>
 
             {/* Apply Form / Owner Actions */}
-            <div className="bg-white rounded-2xl border border-[#2F8F6B]/20 shadow-sm p-6">
-              <h2 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mb-5">
+            <div className="bg-white dark:bg-[#132B23] rounded-2xl border border-[#2F8F6B]/20 dark:border-[#1E3B34] shadow-sm p-6">
+              <h2 className="font-[Manrope] font-bold text-slate-900 dark:text-white text-xl mb-5">
                 {isOwner ? "Manage Your Project" : "Apply to This Mission"}
               </h2>
 
@@ -561,9 +568,9 @@ export function MissionDetail() {
                 <div className="flex flex-col gap-3">
                   <Link
                     to={`/post-project?edit=${dbProject?.id}`}
-                    className="flex-1 flex items-center justify-center gap-2 border-2 border-[#1a3a2a] text-[#1a3a2a] text-sm py-3 rounded-xl hover:bg-green-50 transition font-medium"
+                    className="flex-1 flex items-center justify-center gap-2 border border-slate-200 dark:border-[#1E3B34] bg-white dark:bg-[#0D1F18] text-slate-700 dark:text-[#BEEBD7] text-sm py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#17342B] transition font-semibold min-h-[48px]"
                   >
-                    ✏️ Edit Project
+                    Edit Project
                   </Link>
                   <button
                     onClick={() => {
@@ -572,14 +579,14 @@ export function MissionDetail() {
                         fetchApplicants();
                       }
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 bg-[#1a3a2a] text-white text-sm py-3 rounded-xl hover:bg-green-900 transition font-medium"
+                    className="flex-1 flex items-center justify-center gap-2 bg-[#0F3D2E] text-white text-sm py-3 rounded-xl hover:bg-[#2F8F6B] transition font-semibold min-h-[48px]"
                   >
-                    👥 {showApplicants ? 'Hide Applicants' : 'View Applicants'}
+                    {showApplicants ? "Hide Applicants" : "View Applicants"}
                   </button>
                   <button
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="flex-1 flex items-center justify-center gap-2 border-2 border-red-500 text-red-600 text-sm py-3 rounded-xl hover:bg-red-50 transition font-medium disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-2 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-300 bg-red-50/60 dark:bg-red-900/10 text-sm py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition font-semibold disabled:opacity-50 min-h-[48px]"
                   >
                     {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     {deleting ? 'Deleting...' : 'Delete Project'}
@@ -587,31 +594,40 @@ export function MissionDetail() {
 
                   {/* Applicants Section */}
                   {showApplicants && (
-                    <div className="mt-4 border-t pt-4">
-                      <h3 className="font-semibold text-[#0F3D2E] mb-3">Applicants ({applicants.length})</h3>
+                    <div className="mt-4 border-t border-slate-100 dark:border-[#1E3B34] pt-4">
+                      <h3 className="font-semibold text-slate-900 dark:text-white mb-3">
+                        Applicants ({applicants.length})
+                      </h3>
                       
                       {applicantsLoading ? (
                         <div className="flex items-center justify-center py-6">
                           <Loader2 className="w-5 h-5 animate-spin text-[#2F8F6B]" />
-                          <span className="ml-2 text-gray-500 text-sm">Loading applicants...</span>
+                          <span className="ml-2 text-slate-500 dark:text-[#94C8AF] text-sm">Loading applicants...</span>
                         </div>
                       ) : applicants.length === 0 ? (
-                        <div className="text-center py-6 text-gray-500">
-                          <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                        <div className="text-center py-6 text-slate-500 dark:text-[#94C8AF]">
+                          <Users className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-[#1E3B34]" />
                           <p className="text-sm">No applicants yet</p>
                         </div>
                       ) : (
                         <div className="space-y-3 max-h-80 overflow-y-auto">
                           {applicants.map((applicant) => (
-                            <div key={applicant.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                            <div
+                              key={applicant.id}
+                              className="bg-slate-50 dark:bg-[#0D1F18] rounded-xl p-4 border border-slate-100 dark:border-[#1E3B34]"
+                            >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-3">
                                   <div className="w-10 h-10 bg-[#2F8F6B] rounded-full flex items-center justify-center text-white font-semibold">
                                     {applicant.responder_profile?.name?.charAt(0) || '?'}
                                   </div>
                                   <div>
-                                    <p className="font-medium text-[#0F3D2E]">{applicant.responder_profile?.name || 'Unknown'}</p>
-                                    <p className="text-xs text-gray-500 capitalize">{applicant.role} · {applicant.responder_profile?.location || 'No location'}</p>
+                                    <p className="font-semibold text-slate-900 dark:text-white">
+                                      {applicant.responder_profile?.name || "Unknown"}
+                                    </p>
+                                    <p className="text-xs text-slate-500 dark:text-[#94C8AF] capitalize">
+                                      {applicant.role} · {applicant.responder_profile?.location || "No location"}
+                                    </p>
                                   </div>
                                 </div>
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -624,7 +640,7 @@ export function MissionDetail() {
                               </div>
                               
                               {applicant.message && (
-                                <p className="text-sm text-gray-600 mt-2 bg-white rounded-lg p-2 border border-gray-100">
+                                <p className="text-sm text-slate-600 dark:text-[#BEEBD7]/85 mt-2 bg-white dark:bg-[#132B23] rounded-lg p-2 border border-slate-100 dark:border-[#1E3B34]">
                                   "{applicant.message}"
                                 </p>
                               )}
@@ -633,12 +649,12 @@ export function MissionDetail() {
                               {applicant.responder_profile?.skills && applicant.responder_profile.skills.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-2">
                                   {applicant.responder_profile.skills.slice(0, 4).map(skill => (
-                                    <span key={skill} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                    <span key={skill} className="text-xs bg-[#E6F4EE] dark:bg-[#1E3B34] text-[#0F3D2E] dark:text-[#BEEBD7] px-2 py-0.5 rounded-full">
                                       {skill}
                                     </span>
                                   ))}
                                   {applicant.responder_profile.skills.length > 4 && (
-                                    <span className="text-xs text-gray-400">+{applicant.responder_profile.skills.length - 4} more</span>
+                                    <span className="text-xs text-slate-400 dark:text-[#6B8F7F]">+{applicant.responder_profile.skills.length - 4} more</span>
                                   )}
                                 </div>
                               )}
@@ -648,15 +664,15 @@ export function MissionDetail() {
                                 <div className="flex gap-2 mt-3">
                                   <button
                                     onClick={() => handleApplicantAction(applicant.id, 'accepted')}
-                                    className="flex-1 bg-green-600 text-white text-xs py-2 rounded-lg hover:bg-green-700 transition font-medium"
+                                    className="flex-1 bg-[#0F3D2E] text-white text-xs py-2 rounded-lg hover:bg-[#2F8F6B] transition font-semibold"
                                   >
-                                    ✓ Accept
+                                    Accept
                                   </button>
                                   <button
                                     onClick={() => handleApplicantAction(applicant.id, 'declined')}
-                                    className="flex-1 bg-gray-200 text-gray-700 text-xs py-2 rounded-lg hover:bg-gray-300 transition font-medium"
+                                    className="flex-1 bg-slate-200 dark:bg-[#1E3B34] text-slate-700 dark:text-[#BEEBD7] text-xs py-2 rounded-lg hover:bg-slate-300 dark:hover:bg-[#17342B] transition font-semibold"
                                   >
-                                    ✗ Decline
+                                    Decline
                                   </button>
                                 </div>
                               )}
@@ -687,7 +703,7 @@ export function MissionDetail() {
                     )}
                   </div>
 
-                  <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mb-2">
+                  <h3 className="font-[Manrope] font-bold text-slate-900 dark:text-white text-xl mb-2">
                     {myApplicationStatus === "accepted"
                       ? "Application Accepted"
                       : myApplicationStatus === "pending"
@@ -695,7 +711,7 @@ export function MissionDetail() {
                       : "Application Declined"}
                   </h3>
 
-                  <p className="text-gray-500 text-sm mb-6">
+                  <p className="text-slate-500 dark:text-[#94C8AF] text-sm mb-6">
                     {myApplicationStatus === "accepted"
                       ? "You're connected to this mission. Keep an eye on updates from the organization."
                       : myApplicationStatus === "pending"
@@ -712,11 +728,11 @@ export function MissionDetail() {
                 </div>
               ) : submitted ? (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-[#E6F4EE] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="w-8 h-8 text-[#2F8F6B]" />
+                  <div className="w-16 h-16 bg-[#E6F4EE] dark:bg-[#1E3B34] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-[#2F8F6B] dark:text-[#6DD4A8]" />
                   </div>
-                  <h3 className="font-[Manrope] font-bold text-[#0F3D2E] text-xl mb-2">Application Submitted!</h3>
-                  <p className="text-gray-500 text-sm mb-6">
+                  <h3 className="font-[Manrope] font-bold text-slate-900 dark:text-white text-xl mb-2">Application Submitted!</h3>
+                  <p className="text-slate-500 dark:text-[#94C8AF] text-sm mb-6">
                     {mission.org} will review your application and get back to you within 3 business days.
                   </p>
                   <Link to="/progress" className="text-sm font-semibold text-[#2F8F6B] hover:text-[#0F3D2E] flex items-center justify-center gap-1">
@@ -727,7 +743,7 @@ export function MissionDetail() {
                 <form onSubmit={handleApply} className="space-y-4">
                   {/* Role selector */}
                   <div>
-                    <label className="text-sm font-semibold text-[#0F3D2E] block mb-2">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white block mb-2">
                       I'm applying as a:
                     </label>
                     <div className="grid grid-cols-2 gap-3">
@@ -738,8 +754,8 @@ export function MissionDetail() {
                           onClick={() => setActiveRole(role)}
                           className={`p-3 rounded-xl border-2 text-sm font-medium capitalize transition-colors ${
                             activeRole === role
-                              ? "border-[#2F8F6B] bg-[#E6F4EE] text-[#0F3D2E]"
-                              : "border-gray-200 text-gray-600 hover:border-[#2F8F6B]/50"
+                              ? "border-[#2F8F6B] bg-[#E6F4EE] dark:bg-[#0D1F18] text-[#0F3D2E] dark:text-[#BEEBD7]"
+                              : "border-slate-200 dark:border-[#1E3B34] text-slate-600 dark:text-[#94C8AF] hover:border-[#2F8F6B]/50 dark:hover:border-[#6DD4A8]/40"
                           }`}
                         >
                           {role}
@@ -750,31 +766,31 @@ export function MissionDetail() {
 
                   {/* Motivation */}
                   <div>
-                    <label className="text-sm font-semibold text-[#0F3D2E] block mb-1.5">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white block mb-1.5">
                       Why do you want to join this mission?
-                      <span className="text-gray-400 font-normal ml-1">(max 100 words)</span>
+                      <span className="text-slate-400 dark:text-[#6B8F7F] font-normal ml-1">(max 100 words)</span>
                     </label>
                     <textarea
                       rows={4}
                       value={motivation}
                       onChange={(e) => setMotivation(e.target.value)}
                       placeholder="Describe your motivation, relevant experience, and what you hope to contribute..."
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 focus:border-[#2F8F6B] resize-none"
+                      className="w-full px-4 py-3 border border-slate-200 dark:border-[#1E3B34] bg-white dark:bg-[#0D1F18] text-slate-900 dark:text-[#BEEBD7] placeholder:text-slate-400 dark:placeholder:text-[#6B8F7F] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 focus:border-[#2F8F6B] resize-none"
                     />
-                    <p className="text-xs text-gray-400 mt-1 text-right">
+                    <p className="text-xs text-slate-400 dark:text-[#6B8F7F] mt-1 text-right">
                       {motivation.trim().split(/\s+/).filter(Boolean).length}/100 words
                     </p>
                   </div>
 
                   {/* Availability */}
                   <div>
-                    <label className="text-sm font-semibold text-[#0F3D2E] block mb-1.5">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white block mb-1.5">
                       Availability confirmation
                     </label>
                     <select
                       value={availability}
                       onChange={(e) => setAvailability(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 bg-white"
+                      className="w-full px-4 py-3 border border-slate-200 dark:border-[#1E3B34] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2F8F6B]/30 bg-white dark:bg-[#0D1F18] text-slate-900 dark:text-[#BEEBD7]"
                     >
                       <option value="">Select your availability...</option>
                       <option>Weekends only</option>
@@ -786,7 +802,7 @@ export function MissionDetail() {
 
                   {/* Error message */}
                   {applyError && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3">
+                    <div className="bg-red-50/70 dark:bg-red-900/10 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-300 text-sm rounded-xl p-3">
                       {applyError}
                     </div>
                   )}
@@ -836,12 +852,14 @@ export function MissionDetail() {
             </div>
 
             {/* Quick actions */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="bg-white dark:bg-[#132B23] rounded-2xl border border-slate-200 dark:border-[#1E3B34] shadow-sm p-5">
               <div className="space-y-2">
                 <button
                   onClick={handleSave}
                   className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
-                    saved ? "bg-[#E6F4EE] border-[#2F8F6B]/30 text-[#0F3D2E]" : "border-gray-200 text-gray-600 hover:border-[#2F8F6B]/50"
+                    saved
+                      ? "bg-[#E6F4EE] dark:bg-[#0D1F18] border-[#2F8F6B]/30 dark:border-[#6DD4A8]/30 text-[#0F3D2E] dark:text-[#BEEBD7]"
+                      : "border-slate-200 dark:border-[#1E3B34] text-slate-600 dark:text-[#94C8AF] hover:border-[#2F8F6B]/50 dark:hover:border-[#6DD4A8]/40"
                   }`}
                 >
                   <Bookmark className={`w-4 h-4 ${saved ? "fill-[#2F8F6B] text-[#2F8F6B]" : ""}`} />
@@ -849,7 +867,7 @@ export function MissionDetail() {
                 </button>
                 <button 
                   onClick={handleShare}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:border-[#2F8F6B]/50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border border-slate-200 dark:border-[#1E3B34] text-slate-600 dark:text-[#94C8AF] hover:border-[#2F8F6B]/50 dark:hover:border-[#6DD4A8]/40 transition-colors"
                 >
                   <Share2 className="w-4 h-4" />
                   Share Mission
@@ -858,11 +876,11 @@ export function MissionDetail() {
             </div>
 
             {/* Skills required */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <h3 className="font-[Manrope] font-bold text-[#0F3D2E] mb-3">Skills for this Mission</h3>
+            <div className="bg-white dark:bg-[#132B23] rounded-2xl border border-slate-200 dark:border-[#1E3B34] shadow-sm p-5">
+              <h3 className="font-[Manrope] font-bold text-slate-900 dark:text-white mb-3">Skills for this Mission</h3>
               <div className="flex flex-wrap gap-2">
                 {mission.skills.map((skill: string) => (
-                  <span key={skill} className="text-xs bg-[#E6F4EE] text-[#0F3D2E] px-3 py-1.5 rounded-full font-medium">
+                  <span key={skill} className="text-xs bg-[#E6F4EE] dark:bg-[#1E3B34] text-[#0F3D2E] dark:text-[#BEEBD7] px-3 py-1.5 rounded-full font-medium">
                     {skill}
                   </span>
                 ))}
@@ -870,15 +888,15 @@ export function MissionDetail() {
             </div>
 
             {/* Related missions */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <h3 className="font-[Manrope] font-bold text-[#0F3D2E] mb-3">Related Missions</h3>
+            <div className="bg-white dark:bg-[#132B23] rounded-2xl border border-slate-200 dark:border-[#1E3B34] shadow-sm p-5">
+              <h3 className="font-[Manrope] font-bold text-slate-900 dark:text-white mb-3">Related Missions</h3>
 
               {relatedLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="w-5 h-5 animate-spin text-[#2F8F6B]" />
                 </div>
               ) : relatedProjects.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-3">No related missions found.</p>
+                <p className="text-sm text-slate-400 dark:text-[#6B8F7F] text-center py-3">No related missions found.</p>
               ) : (
                 <div className="space-y-3">
                   {relatedProjects.map((m) => (
@@ -887,20 +905,20 @@ export function MissionDetail() {
                       to={`/missions/${m.id}`}
                       className="flex items-center gap-3 group"
                     >
-                      <div className="w-12 h-12 rounded-lg bg-[#E6F4EE] flex items-center justify-center flex-shrink-0">
-                        <Leaf className="w-5 h-5 text-[#2F8F6B]" />
+                      <div className="w-12 h-12 rounded-lg bg-[#E6F4EE] dark:bg-[#1E3B34] flex items-center justify-center flex-shrink-0">
+                        <Leaf className="w-5 h-5 text-[#2F8F6B] dark:text-[#6DD4A8]" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#0F3D2E] group-hover:text-[#2F8F6B] truncate transition-colors">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-[#2F8F6B] truncate transition-colors">
                           {m.title}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           {m.focus_area?.[0] && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#E6F4EE] dark:bg-[#1E3B34] text-[#0F3D2E] dark:text-[#BEEBD7]">
                               {m.focus_area[0]}
                             </span>
                           )}
-                          <span className="text-xs text-gray-400 flex items-center gap-1">
+                          <span className="text-xs text-slate-400 dark:text-[#6B8F7F] flex items-center gap-1">
                             <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                             +{m.points}
                           </span>

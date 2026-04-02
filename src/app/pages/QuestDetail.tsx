@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { Loader2, ArrowLeft, Upload, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useDemoMode } from '../hooks/useDemoMode';
 import { getCurrentProfile } from '../utils/matchService';
 import { PageSkeleton } from '../components/ui/loading-skeleton';
 import { EmptyState } from '../components/ui/empty-state';
@@ -22,6 +23,7 @@ import { toast } from 'sonner';
 export function QuestDetail() {
   const { questId } = useParams<{ questId: string }>();
   const { user, loading: authLoading } = useAuth();
+  const { demoMode } = useDemoMode();
   const navigate = useNavigate();
 
   // State
@@ -80,6 +82,11 @@ export function QuestDetail() {
 
   // Mark step as complete
   const markStepComplete = async (stepIndex: number) => {
+    if (!user) {
+      toast.error("Sign in to track progress.");
+      navigate("/auth");
+      return;
+    }
     if (!quest || !profile?.id || !questId) return;
 
     const newStep = stepIndex + 1;
@@ -103,6 +110,11 @@ export function QuestDetail() {
 
   // Handle submission
   const handleSubmit = async () => {
+    if (!user) {
+      toast.error("Sign in to submit proof.");
+      navigate("/auth");
+      return;
+    }
     if (!quest || !profile?.id || !questId || !photoFile) {
       toast.error('Please upload a photo.');
       return;
@@ -247,8 +259,8 @@ export function QuestDetail() {
     return <PageSkeleton hasHero={false} />;
   }
 
-  // Auth guard
-  if (!user) {
+  // Auth guard (allow read-only preview in demo mode)
+  if (!user && !demoMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB] dark:bg-[#0D1F18] px-4">
         <EmptyState

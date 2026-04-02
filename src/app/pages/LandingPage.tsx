@@ -22,6 +22,7 @@ import {
   FileCheck,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { useDemoMode } from "../hooks/useDemoMode";
 import { fetchAllQuests } from "../utils/questService";
 import type { Quest } from "../types/database";
 
@@ -126,6 +127,7 @@ const credibilityFeatures = [
 
 export function LandingPage() {
   const { user } = useAuth();
+  const { enableDemoMode } = useDemoMode();
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = prefersReducedMotion === true;
@@ -229,7 +231,8 @@ export function LandingPage() {
   // Auth-aware CTA
   const handleJoinProject = () => {
     if (!user) {
-      navigate("/auth");
+      enableDemoMode();
+      navigate("/browse");
     } else {
       navigate("/dashboard");
     }
@@ -309,11 +312,11 @@ export function LandingPage() {
               <Users className="w-4 h-4" /> Join a Project
             </motion.button>
             <motion.div whileHover={reduceMotion ? undefined : { y: -1 }} className="inline-flex justify-center">
-              <Link to="/hands-on"
+            <Link to="/hands-on"
                 className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-lg transition-all duration-200 bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:bg-transparent dark:border-[#6DD4A8]/60 dark:text-[#BEEBD7] dark:hover:bg-white/10 font-semibold active:scale-[0.98]"
                 style={{ fontFamily: "'Manrope', sans-serif" }}>
                 <Sprout className="w-4 h-4" /> Browse Quests
-              </Link>
+            </Link>
             </motion.div>
           </motion.div>
 
@@ -707,17 +710,20 @@ export function LandingPage() {
           </motion.p>
           <motion.div variants={heroItem} className="flex flex-wrap gap-3 justify-center">
             <motion.div whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }} className="inline-flex">
-              <Link to="/auth"
+              <Link to={user ? "/dashboard" : "/browse"}
+                onClick={() => {
+                  if (!user) enableDemoMode();
+                }}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold bg-white text-[#0F3D2E] hover:bg-[#E8F5EF] dark:bg-white dark:text-[#0F3D2E] dark:hover:bg-[#E8F5EF] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F3D2E] min-h-[48px]"
                 style={{ fontFamily: "'Manrope', sans-serif" }}>
-                <Sprout className="w-4 h-4" /> Get started
-              </Link>
+                <Sprout className="w-4 h-4" /> {user ? "Go to dashboard" : "Try demo"}
+            </Link>
             </motion.div>
             <motion.div whileHover={reduceMotion ? undefined : { y: -1 }} className="inline-flex">
-              <Link to="/hands-on"
+            <Link to="/hands-on"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm text-white font-medium border-2 border-white/40 hover:bg-white/15 hover:border-white/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 min-h-[48px]">
                 Browse quests <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+            </Link>
             </motion.div>
           </motion.div>
         </motion.div>

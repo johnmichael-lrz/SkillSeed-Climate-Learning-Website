@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { BookOpen, Filter, Search, ShieldCheck, Sparkles, RefreshCw, AlertTriangle, Leaf } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useDemoMode } from '../hooks/useDemoMode';
 import { getCurrentProfile } from '../utils/matchService';
 import { 
   fetchAllQuests, 
@@ -70,6 +71,7 @@ function FilterBarSkeleton() {
 
 export function HandsOnQuests() {
   const { user, loading: authLoading } = useAuth();
+  const { demoMode } = useDemoMode();
   const navigate = useNavigate();
 
   // State
@@ -154,7 +156,11 @@ export function HandsOnQuests() {
   // Handle starting a quest
   const handleStartQuest = async (quest: Quest) => {
     if (!user) {
-      navigate('/auth');
+      if (demoMode) {
+        navigate(`/quests/${quest.id}`);
+      } else {
+        navigate('/auth');
+      }
       return;
     }
 

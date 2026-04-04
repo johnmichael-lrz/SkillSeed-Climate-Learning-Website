@@ -664,6 +664,32 @@ export async function hasUserSubmitted(challengeId: string, userId: string): Pro
 }
 
 /**
+ * Delete every challenge row where this profile is the creator (UI: "my posted challenges").
+ * ON DELETE CASCADE removes participants, submissions, and likes tied to those challenges.
+ */
+export async function deleteMyCreatedChallenges(profileId: string): Promise<number> {
+  const { data: rows, error: selErr } = await supabase
+    .from('challenges')
+    .select('id')
+    .eq('creator_id', profileId);
+
+  if (selErr) {
+    console.error('deleteMyCreatedChallenges: select', selErr);
+    throw selErr;
+  }
+  if (!rows?.length) return 0;
+
+  const { error: delErr } = await supabase.from('challenges').delete().eq('creator_id', profileId);
+
+  if (delErr) {
+    console.error('deleteMyCreatedChallenges: delete', delErr);
+    throw delErr;
+  }
+
+  return rows.length;
+}
+
+/**
  * Demo / redo helper: delete this profile's challenge_submissions (feed) and
  * remove challenge_participants rows for those challenges and any still marked
  * completed — same as leaving each challenge, so "My Challenges" on the profile

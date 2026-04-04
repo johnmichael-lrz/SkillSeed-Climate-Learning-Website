@@ -46,6 +46,7 @@ import {
   fetchUserLikedSubmissions,
   subscribeToFeed,
   resetMyChallengeSubmissions,
+  deleteMyCreatedChallenges,
 } from "../utils/challengeService";
 import { CreateChallengeModal } from "../components/CreateChallengeModal";
 import { SubmissionModal } from "../components/SubmissionModal";
@@ -506,21 +507,24 @@ export function CommunityChallenges() {
   const handleResetMyChallengeProgress = async () => {
     if (!userProfileId) return;
     const ok = window.confirm(
-      "Leave all community challenges you finished (removes them from your profile), delete your feed posts, and reset counts so you can join and submit again for a demo?",
+      "Delete community challenges you created, leave challenges you finished (removes them from your profile), delete your feed posts, and reset counts so you can demo again?",
     );
     if (!ok) return;
     setResettingMySubmissions(true);
     setError(null);
     try {
+      const deletedCreated = await deleteMyCreatedChallenges(userProfileId);
       const { deletedSubmissions, removedParticipations } = await resetMyChallengeSubmissions(userProfileId);
       await fetchData();
-      if (deletedSubmissions === 0 && removedParticipations === 0) {
-        window.alert("Nothing to reset — you are not in any completed challenges and have no feed posts.");
+      if (deletedCreated === 0 && deletedSubmissions === 0 && removedParticipations === 0) {
+        window.alert(
+          "Nothing to reset — you have no posted challenges, no completed challenges to leave, and no feed posts.",
+        );
       }
     } catch (err) {
       console.error("Error resetting submissions:", err);
       setError(
-        "Could not reset your challenges. Check you are signed in and that your Supabase policies allow updating challenge_participants and deleting challenge_submissions.",
+        "Could not reset your challenges. Check you are signed in and that your Supabase policies allow deleting your challenges, challenge_participants, and challenge_submissions.",
       );
     } finally {
       setResettingMySubmissions(false);

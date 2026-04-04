@@ -4,7 +4,7 @@ import { MapPin, Clock, Award, Trophy, Target, Flame, Edit2 } from "lucide-react
 import { useAuth } from "../hooks/useAuth";
 import { getCurrentProfile, withdrawMyPendingApplications } from "../utils/matchService";
 import { supabase } from "../utils/supabase";
-import { resetMyChallengeSubmissions } from "../utils/challengeService";
+import { resetMyChallengeSubmissions, deleteMyCreatedChallenges } from "../utils/challengeService";
 import { PageSkeleton } from "../components/ui/loading-skeleton";
 import { EmptyState } from "../components/ui/empty-state";
 import { toast } from "sonner";
@@ -267,11 +267,12 @@ export function ProgressTracker() {
   const handleResetCommunityChallengesForDemo = async () => {
     if (!profile?.id) return;
     const ok = window.confirm(
-      "Leave your community challenges and remove your feed posts? They disappear from My Challenges here and on Community you can join again for a fresh demo.",
+      "Delete community challenges you created, leave finished challenges, and remove your feed posts? You can start a fresh demo on Community afterward.",
     );
     if (!ok) return;
     setResettingCommunityDemo(true);
     try {
+      await deleteMyCreatedChallenges(profile.id);
       await resetMyChallengeSubmissions(profile.id);
       await fetchChallenges(profile.id);
       await fetchLeaderboardRank(profile.id);
@@ -279,7 +280,7 @@ export function ProgressTracker() {
     } catch (err) {
       console.error("Reset community challenges failed:", err);
       window.alert(
-        "Could not reset. Ensure Supabase allows deleting your challenge_participants and challenge_submissions rows.",
+        "Could not reset. Ensure Supabase allows deleting your challenges, challenge_participants, and challenge_submissions.",
       );
     } finally {
       setResettingCommunityDemo(false);

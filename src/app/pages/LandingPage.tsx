@@ -712,7 +712,7 @@ export function LandingPage() {
             <motion.div whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }} className="inline-flex">
               <Link
                 to={user ? "/dashboard" : "/auth?tab=signup"}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold bg-white text-[#0F3D2E] hover:bg-[#E8F5EF] dark:bg-white dark:text-[#0F3D2E] dark:hover:bg-[#E8F5EF] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F3D2E] min-h-[48px]"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold bg-white text-[#0F3D2E] hover:bg-[#E8F5EF] dark:bg-white dark:text-white dark:hover:bg-[#E8F5EF] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F3D2E] min-h-[48px]"
                 style={{ fontFamily: "'Manrope', sans-serif" }}
               >
                 <Sprout className="w-4 h-4" /> Get started

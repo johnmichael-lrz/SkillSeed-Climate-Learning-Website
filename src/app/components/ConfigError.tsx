@@ -19,6 +19,17 @@ export function ConfigError() {
 
             <div className="mt-4 rounded-xl border border-gray-200 dark:border-white/10 bg-[#F9FAFB] dark:bg-[#0D1F18] p-4">
               <div className="text-xs font-semibold text-[#374151] dark:text-emerald-100/80 mb-1">
+                Fix (Vercel or other hosts)
+              </div>
+              <ol className="text-sm text-[#374151] dark:text-emerald-50/90 list-decimal pl-4 space-y-1">
+                <li>Open the project on your host (e.g. Vercel → Project → Settings → Environment Variables).</li>
+                <li>Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for Production (and Preview if you use preview URLs).</li>
+                <li>Redeploy. Vite bakes `VITE_*` variables in at build time, so a new deployment is required.</li>
+              </ol>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-gray-200 dark:border-white/10 bg-[#F9FAFB] dark:bg-[#0D1F18] p-4">
+              <div className="text-xs font-semibold text-[#374151] dark:text-emerald-100/80 mb-1">
                 Fix (local dev)
               </div>
               <ol className="text-sm text-[#374151] dark:text-emerald-50/90 list-decimal pl-4 space-y-1">
